@@ -17,7 +17,7 @@
     <td>{{ p[0] }}</td>        <!-- item -->
     <td>{{ p[1] }}</td>        <!-- quantity -->
     <td>{{ p[2] }} pts</td>    <!-- total cost -->
-    <td>{{ p[3] }}</td>        <!-- timestamp -->
+    <td>{{ p[3].strftime('%b %d, %I:%M %p') }}</td>        <!-- timestamp -->
 </tr>
 {% endfor %}
 
