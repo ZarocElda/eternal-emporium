@@ -139,8 +139,40 @@
         <p id="modalText" style="margin-bottom:20px;"></p>
 
         <form method="post">
+
             <input type="hidden" name="item_id" id="modalItemId">
+
+            <!-- QUANTITY SELECTOR -->
+            <div style="
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                gap:10px;
+                margin-bottom:15px;
+            ">
+                <button type="button" onclick="changeQty(-1)">-</button>
+
+                <input 
+                    type="number"
+                    id="modalQty"
+                    name="quantity"
+                    value="1"
+                    min="1"
+                    style="width:60px; text-align:center;"
+                >
+
+                <button type="button" onclick="changeQty(1)">+</button>
+            </div>
+
+            <!-- TOTAL -->
+            <p id="modalTotal" style="
+                margin-bottom:15px;
+                font-weight:600;
+                color:#3b82f6;
+            "></p>
+
             <button name="buy_item">Confirm Purchase</button>
+
         </form>
 
         <button onclick="closeModal()" style="
@@ -188,10 +220,43 @@
 <script>
 function openModal(id, name, cost) {
     document.getElementById("buyModal").style.display = "flex";
+
     document.getElementById("modalItemId").value = id;
-    document.getElementById("modalText").innerText =
-        `Buy ${name} for ${cost} points?`;
+    document.getElementById("modalQty").value = 1;
+
+    window.currentItemCost = cost;
+    window.currentItemName = name;
+
+    updateTotal();
 }
+
+function changeQty(amount) {
+    let input = document.getElementById("modalQty");
+    let value = parseInt(input.value) || 1;
+
+    value += amount;
+
+    if (value < 1) value = 1;
+
+    input.value = value;
+    updateTotal();
+}
+
+function updateTotal() {
+    let qty = parseInt(document.getElementById("modalQty").value) || 1;
+    let total = qty * window.currentItemCost;
+
+    document.getElementById("modalText").innerText =
+        `Buy ${qty} x ${window.currentItemName}?`;
+
+    document.getElementById("modalTotal").innerText =
+        `Total: ${total} points`;
+}
+document.addEventListener("input", function(e) {
+    if (e.target.id === "modalQty") {
+        updateTotal();
+    }
+});
 
 function closeModal() {
     document.getElementById("buyModal").style.display = "none";
