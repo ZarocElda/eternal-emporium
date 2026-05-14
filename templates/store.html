@@ -107,7 +107,7 @@
 
         <form method="post" onsubmit="return preparePurchase()">
             <input type="hidden" name="item_id" id="modalItemId">
-            <input type="hidden" name="quantity" id="modalQty">
+            <input type="number" name="quantity" id="modalQty" style="display:none;">
             <input type="hidden" id="userPoints" value="{{ user_points }}">
 
             <button type="submit" name="buy_item">Yes</button>
