@@ -50,24 +50,31 @@
         <p>Stock: {{ item.quantity }}</p>
 
         <!-- ✅ CARD QUANTITY SELECTOR -->
-        <div style="display:flex; justify-content:center; gap:10px; margin:10px 0;">
-            <button type="button" onclick="changeCardQty({{ item.id }}, -1)">-</button>
+        <div style="display:flex; justify-content:center; gap:8px; margin:10px 0; align-items:center;">
 
-            <input 
+            <button type="button"
+                style="width:35px; height:35px; font-size:18px; padding:0;"
+                onclick="changeCardQty({{ item.id }}, -1)">-</button>
+
+            <input
                 id="cardQty-{{ item.id }}"
                 type="number"
                 value="1"
                 min="1"
-                style="width:50px; text-align:center;"
+                style="width:50px; height:35px; text-align:center;"
             >
 
-            <button type="button" onclick="changeCardQty({{ item.id }}, 1)">+</button>
+            <button type="button"
+                style="width:35px; height:35px; font-size:18px; padding:0;"
+                onclick="changeCardQty({{ item.id }}, 1)">+</button>
+
         </div>
 
         <!-- BUY BUTTON -->
         <button 
             type="button"
-            onclick="openModal(this)"
+            style="width:100%; margin-top:10px;"
+            onclick="openBuyModal(this)"
             data-id="{{ item.id }}"
             data-name="{{ item.name }}"
             data-cost="{{ item.cost }}"
@@ -96,14 +103,14 @@
 ">
     <div style="background:#1e293b; padding:25px; border-radius:12px; width:300px; text-align:center;">
 
-        <p id="modalText"></p>
+        <p id="buyModalText"></p>
 
         <form method="post">
             <input type="hidden" name="item_id" id="modalItemId">
             <input type="hidden" name="quantity" id="modalQty">
             <input type="hidden" id="userPoints" value="{{ user_points }}">
 
-            <button name="buy_item">Yes</button>
+            <button type="submit" name="buy_item">Yes</button>
         </form>
 
         <button onclick="closeModal()">Cancel</button>
@@ -117,43 +124,55 @@ function changeCardQty(id, amount) {
     let val = parseInt(input.value) || 1;
 
     val += amount;
+
     if (val < 1) val = 1;
 
     input.value = val;
 }
 
 // OPEN CONFIRM MODAL
-function openModal(btn) {
+function openBuyModal(btn) {
     const id = btn.dataset.id;
     const name = btn.dataset.name;
     const cost = parseInt(btn.dataset.cost);
     const stock = parseInt(btn.dataset.stock);
 
-    let qty = parseInt(document.getElementById("cardQty-" + id).value) || 1;
-    let userPoints = parseInt(document.getElementById("userPoints").value) || 0;
+    let qtyInput = document.getElementById("cardQty-" + id);
+    let qty = parseInt(qtyInput.value) || 1;
+
+    let userPointsEl = document.getElementById("userPoints");
+    let userPoints = userPointsEl ? parseInt(userPointsEl.value) : 0;
 
     let total = qty * cost;
 
-    // ❌ STOCK BLOCK
+    // ❌ OUT OF STOCK
+    if (stock <= 0) {
+        alert("Item is out of stock");
+        return;
+    }
+
+    // ❌ EXCEEDS STOCK
     if (qty > stock) {
         alert("Not enough stock");
         return;
     }
 
-    // ❌ POINTS BLOCK
+    // ❌ NOT ENOUGH POINTS
     if (total > userPoints) {
         alert("Not enough points");
         return;
     }
 
-    // ✅ SHOW MODAL
-    document.getElementById("buyModal").style.display = "flex";
-
-    document.getElementById("modalText").innerText =
+    // ✅ SET MODAL TEXT
+    document.getElementById("buyModalText").innerText =
         `Are you sure you want to buy ${qty} x ${name} for ${total} points?`;
 
+    // ✅ SET FORM VALUES
     document.getElementById("modalItemId").value = id;
     document.getElementById("modalQty").value = qty;
+
+    // ✅ SHOW MODAL
+    document.getElementById("buyModal").style.display = "flex";
 }
 
 // CLOSE MODAL
