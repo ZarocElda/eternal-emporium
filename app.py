@@ -304,8 +304,7 @@ def store():
 
         # ================= BUY ITEM =================
         if "buy_item" in request.form:
-            print("FORM DATA:", request.form)
-            
+
             item_id = request.form["item_id"]
             quantity_to_buy = int(request.form.get("quantity", 1))
 
