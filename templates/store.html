@@ -105,7 +105,7 @@
 
         <p id="buyModalText"></p>
 
-        <form method="post">
+        <form method="post" onsubmit="return preparePurchase()">
             <input type="hidden" name="item_id" id="modalItemId">
             <input type="hidden" name="quantity" id="modalQty">
             <input type="hidden" id="userPoints" value="{{ user_points }}">
@@ -178,6 +178,17 @@ function openBuyModal(btn) {
 // CLOSE MODAL
 function closeModal() {
     document.getElementById("buyModal").style.display = "none";
+}
+
+function preparePurchase() {
+    const qty = document.getElementById("modalQty").value;
+
+    if (!qty || qty < 1) {
+        alert("Invalid quantity");
+        return false;
+    }
+
+    return true;
 }
 </script>
 
