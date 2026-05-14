@@ -244,18 +244,14 @@ def store():
 
     if request.method == "POST":
 
-    # ================= IMAGE UPLOAD =================
-
+        # ================= IMAGE UPLOAD =================
         image_filename = None
 
         if "image_file" in request.files:
-
             file = request.files["image_file"]
 
             if file and file.filename != "":
-
                 from werkzeug.utils import secure_filename
-
                 filename = secure_filename(file.filename)
                 filepath = os.path.join("static/uploads", filename)
                 file.save(filepath)
@@ -276,7 +272,7 @@ def store():
             conn.commit()
             flash("Item created!", "success")
             return redirect(url_for("store"))
-        
+
         # ================= DELETE ITEM =================
         if "delete_item" in request.form and current_user.role == "owner":
             item_id = request.form["item_id"]
@@ -286,7 +282,7 @@ def store():
 
             flash("Item deleted", "success")
             return redirect(url_for("store"))
-        
+
         # ================= UPDATE ITEM =================
         if "update_item" in request.form and current_user.role == "owner":
             item_id = request.form["item_id"]
@@ -306,39 +302,67 @@ def store():
             flash("Item updated!", "success")
             return redirect(url_for("store"))
 
-    # ================= BUY ITEM =================
+        # ================= BUY ITEM =================
         if "buy_item" in request.form:
+            print("FORM DATA:", request.form)
+            
             item_id = request.form["item_id"]
+            quantity_to_buy = int(request.form.get("quantity", 1))
 
-            cur.execute("SELECT name, cost, quantity FROM items WHERE id = %s", (item_id,))
+            if quantity_to_buy < 1:
+                flash("Invalid quantity", "error")
+                return redirect(url_for("store"))
+
+            cur.execute(
+                "SELECT name, cost, quantity FROM items WHERE id = %s",
+                (item_id,)
+            )
             item = cur.fetchone()
 
-            cur.execute("SELECT points, rsn FROM users WHERE id = %s", (current_user.id,))
+            cur.execute(
+                "SELECT points, rsn FROM users WHERE id = %s",
+                (current_user.id,)
+            )
             user = cur.fetchone()
 
             if item and user:
-                name, cost, quantity = item
+                name, cost, stock = item
                 points, rsn = user
 
-                if quantity <= 0:
-                    flash("Out of stock", "error")
+                total_cost = cost * quantity_to_buy
+
+                if stock < quantity_to_buy:
+                    flash("Not enough stock", "error")
                     return redirect(url_for("store"))
 
-                if points < cost:
+                if points < total_cost:
                     flash("Not enough points", "error")
                     return redirect(url_for("store"))
 
-                cur.execute("UPDATE users SET points = points - %s WHERE id = %s", (cost, current_user.id))
-                cur.execute("UPDATE items SET quantity = quantity - 1 WHERE id = %s", (item_id,))
+                # UPDATE USER POINTS
+                cur.execute(
+                    "UPDATE users SET points = points - %s WHERE id = %s",
+                    (total_cost, current_user.id)
+                )
 
+                # UPDATE ITEM STOCK
+                cur.execute(
+                    "UPDATE items SET quantity = quantity - %s WHERE id = %s",
+                    (quantity_to_buy, item_id)
+                )
+
+                # INSERT PURCHASE
                 cur.execute("""
                     INSERT INTO purchases (user_id, rsn, item_name, quantity, total_cost)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (current_user.id, rsn, name, 1, cost))
+                """, (current_user.id, rsn, name, quantity_to_buy, total_cost))
 
                 conn.commit()
                 flash("Purchase successful!", "success")
 
+            return redirect(url_for("store"))
+
+    # ================= GET ITEMS =================
     cur.execute("""
         SELECT id, name, cost, quantity, image
         FROM items
@@ -349,15 +373,18 @@ def store():
     cur.close()
     conn.close()
 
+    cur.execute("SELECT points FROM users WHERE id = %s", (current_user.id,))
+    points = cur.fetchone()[0]
+
     return render_template(
         "store.html",
         items=[
             {"id": i[0], "name": i[1], "cost": i[2], "quantity": i[3], "image": i[4]}
             for i in items
         ],
-        is_owner=(current_user.role == "owner")
+        is_owner=(current_user.role == "owner"),
+        user_points=points
     )
-
 
 # ================= ADMIN =================
 @app.route("/admin", methods=["GET", "POST"])
