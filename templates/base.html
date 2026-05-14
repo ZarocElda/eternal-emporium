@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eternal Emporium</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial;
+            background: radial-gradient(circle at top, #1e293b, #020617);
+            color: #e2e8f0;
+        }
+
+        /* NAVBAR */
+        .nav {
+            background: #020617;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .nav-left {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            align-items: center;
+        }
+
+        .brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: white;
+            margin-right: 25px;
+        }
+
+        .nav a {
+            color: #cbd5f5;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .nav a:hover {
+            color: white;
+        }
+
+        /* RIGHT SIDE */
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* PAGE WRAPPER */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        /* FLASH MESSAGES */
+        .flash {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            color: white;
+        }
+
+        .flash.success {
+            background: #16a34a;
+        }
+
+        .flash.error {
+            background: #dc2626;
+        }
+
+        /* GRID */
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        /* CARD */
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            flex: 1 1 260px;
+            max-width: 300px;
+
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            border: 1px solid #2e3b55;
+
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .card img {
+            width: 100%;
+            height: 140px;
+            object-fit: contain;
+            background: #020617;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        /* INPUTS */
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px 0;
+            border-radius: 8px;
+            border: 1px solid #2e3b55;
+            background-color: #0b162b;
+            color: white;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        /* BUTTONS */
+        button {
+            width: 100%;
+            margin-top: 6px;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .delete {
+            background: #ef4444;
+        }
+
+        .delete:hover {
+            background: #dc2626;
+        }
+
+        /* REGISTER BUTTON */
+        .register-btn {
+            display: block;
+            margin-top: 15px;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            color: #3b82f6;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .register-btn:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* TABLES */
+        table {
+            border-collapse: collapse;
+            background: #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 10px 14px;
+            border: 1px solid #334155;
+            text-align: left;
+        }
+
+        th {
+            background: radial-gradient(circle at top, #1e293b, #020617);
+            color: #cbd5f5;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #1a2438;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        /* BACK LINK */
+        .back {
+            display: block;
+            margin: 15px 0;
+            opacity: 0.7;
+        }
+
+        /* FLASH MESSAGES */
+.flash {
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.flash.error {
+    background: #7f1d1d;
+    color: #fecaca;
+    border: 1px solid #dc2626;
+}
+
+.flash.success {
+    background: #14532d;
+    color: #bbf7d0;
+    border: 1px solid #22c55e;
+}
+
+/* PROFILE GRID (override for better layout) */
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 25px;
+}
+
+/* BETTER CARD FEEL (enhances your existing .card) */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+}
+.card:hover img {
+    transform: scale(1.05);
+    transition: 0.2s ease;
+}
+/* FIX INPUT ALIGNMENT INSIDE CARDS */
+.card input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* CLEAN BIG POINTS DISPLAY */
+.points {
+    font-size: 28px;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+/* ROLE BADGES */
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* USER */
+.role-badge.user {
+    background: #334155;
+    color: #cbd5f5;
+}
+
+/* ADMIN */
+.role-badge.admin {
+    background: #1d4ed8;
+    color: #bfdbfe;
+}
+
+/* OWNER */
+.role-badge.owner {
+    background: #f59e0b;
+    color: #1f2937;
+}
+
+.active-nav {
+    color: #3b82f6;
+    font-weight: 600;
+    position: relative;
+}
+
+.active-nav::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #3b82f6;
+}
+
+.brand {
+    text-decoration: none;
+    color: white;
+    font-weight: 700;
+}
+
+    </style>
+</head>
+
+<body>
+
+<div class="nav">
+    {% if current_user.is_authenticated %}
+        <div class="nav-left">
+            <a href="/store" class="brand">Eternal Emporium</a>
+
+            <a href="/store"
+            class="{% if request.path.startswith('/store') %}active-nav{% endif %}">
+            Store
+            </a>
+
+            <a href="/purchases"
+            class="{% if request.path.startswith('/purchases') %}active-nav{% endif %}">
+            Purchases
+            </a>
+
+            {% if current_user.role in ["admin", "owner"] %}
+                <a href="/admin"
+                class="{% if request.path.startswith('/admin') %}active-nav{% endif %}">
+                Control Panel
+                </a>
+            {% endif %}
+
+            {% if current_user.role in ["admin", "owner"] %}
+                <a href="/store_orders"
+                class="{% if request.path.startswith('/store_orders') %}active-nav{% endif %}">
+                Player Store Orders
+                </a>
+            {% endif %}
+
+            {% if current_user.role in ["admin", "owner"] %}
+                <a href="/logs"
+                class="{% if request.path.startswith('/logs') %}active-nav{% endif %}">
+                Admin Ticket Updates
+                </a>
+            {% endif %}
+        </div>
+
+        <div style="display:flex; align-items:center; gap:15px;">
+
+                <!-- POINTS DISPLAY -->
+            <div style="
+                background:#0b162b;
+                padding:6px 12px;
+                border-radius:8px;
+                border:1px solid #2e3b55;
+                font-size:14px;
+                color:#22c55e;
+                font-weight:600;
+            ">
+                    {{ user_points }} pts
+            </div>
+
+            <!-- PROFILE -->
+            <a href="/profile" style="font-size:18px;">👤</a>
+
+            <!-- LOGOUT -->
+            <a href="/logout">Logout</a>
+
+        </div>
+    {% endif %}
+</div>
+
+<div class="container">
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- BACK BUTTON -->
+    {% if current_user.is_authenticated and request.path != '/store' %}
+        <a href="#" onclick="goBack()" class="back">← Back</a>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+</div>
+
+<script>
+function goBack() {
+    if (document.referrer) {
+        window.history.back();
+    } else {
+        window.location.href = "{{ url_for('store') }}";
+    }
+}
+</script>
+
+<!-- GLOBAL CONFIRM MODAL -->
+<div id="confirmModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.6);
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+">
+    <div style="
+        background:#1f2937;
+        padding:20px;
+        border-radius:10px;
+        width:300px;
+        text-align:center;
+    ">
+        <p id="modalText" style="margin-bottom:15px;"></p>
+
+        <button id="confirmBtn" style="margin-right:10px;">
+            Yes
+        </button>
+
+        <button onclick="closeModal()" style="background:#6b7280;">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<script>
+let currentForm = null;
+
+function openModal(form, message) {
+    currentForm = form;
+    document.getElementById("modalText").innerText = message;
+    document.getElementById("confirmModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("confirmModal").style.display = "none";
+    currentForm = null;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("confirmBtn");
+    if (btn) {
+        btn.addEventListener("click", function () {
+            if (currentForm) currentForm.submit();
+        });
+    }
+});
+</script>
+
+</body>
+</html>

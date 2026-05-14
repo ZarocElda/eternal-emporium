@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div style="margin-bottom:25px;">
+    <h2 style="margin-bottom:5px;">Store</h2>
+    <p style="opacity:0.6;">Browse and purchase rewards</p>
+</div>
+
+<div class="grid">
+
+<!-- ================= OWNER CREATE CARD ================= -->
+{% if is_owner %}
+<div class="card" style="width:260px;">
+    <h3>Create Item</h3>
+
+    <form method="post" enctype="multipart/form-data">
+        <input name="name" placeholder="Item Name" required>
+        <input name="cost" placeholder="Cost" required>
+        <input name="quantity" placeholder="Quantity" required>
+        <input type="file" name="image_file" accept="image/*">
+        <button name="create_item">Add Item</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- ================= ITEMS ================= -->
+{% for item in items %}
+
+<div class="card" style="width:260px;">
+
+    <!-- IMAGE -->
+    <div style="
+        height:140px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#020617;
+        border-radius:8px;
+        margin-bottom:10px;
+        overflow:hidden;
+    ">
+        {% if item.image %}
+            <img src="{{ item.image }}" style="
+                max-width:100%;
+                max-height:100%;
+                object-fit:contain;
+            ">
+        {% else %}
+            <span style="opacity:0.5;">No Image</span>
+        {% endif %}
+    </div>
+
+    {% if is_owner %}
+
+        <!-- OWNER MODE -->
+        <form method="post">
+            <input name="image" value="{{ item.image or '' }}" placeholder="Image URL">
+            <input name="name" value="{{ item.name or '' }}">
+            <input name="cost" value="{{ item.cost }}">
+            <input name="quantity" value="{{ item.quantity }}">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+
+            <button name="update_item">Save Changes</button>
+
+            <button type="button" class="delete" onclick="openDeleteModal({{ item.id }})">
+                Delete
+            </button>
+        </form>
+
+        <form id="delete-form-{{ item.id }}" method="post" style="display:none;">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <input type="hidden" name="delete_item" value="1">
+        </form>
+
+    {% else %}
+
+        <!-- USER VIEW -->
+        <h3 style="margin-bottom:5px;">{{ item.name }}</h3>
+
+        <p style="
+            font-size:22px;
+            font-weight:800;
+            color:#3b82f6;
+            margin:5px 0;
+        ">
+            {{ item.cost }} pts
+        </p>
+
+        <p style="opacity:0.7;">
+            Stock: {{ item.quantity }}
+        </p>
+
+        {% if item.quantity <= 3 %}
+            <p style="color:#f59e0b;font-size:12px;">
+                Low stock
+            </p>
+        {% endif %}
+
+        <!-- BUY BUTTON -->
+        <button 
+            type="button"
+            onclick="openModal('{{ item.id }}', '{{ item.name }}', {{ item.cost }})"
+        >
+            Buy
+        </button>
+
+    {% endif %}
+
+</div>
+
+{% endfor %}
+
+</div>
+
+<!-- ================= BUY MODAL ================= -->
+<div id="buyModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+">
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:300px;
+        text-align:center;
+        box-shadow:0 20px 40px rgba(0,0,0,0.6);
+    ">
+        <p id="modalText" style="margin-bottom:20px;"></p>
+
+        <form method="post">
+            <input type="hidden" name="item_id" id="modalItemId">
+            <button name="buy_item">Confirm Purchase</button>
+        </form>
+
+        <button onclick="closeModal()" style="
+            margin-top:10px;
+            background:transparent;
+            border:1px solid #3b82f6;
+        ">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<!-- ================= DELETE MODAL ================= -->
+<div id="deleteModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+">
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:300px;
+        text-align:center;
+        box-shadow:0 10px 30px rgba(0,0,0,0.6);
+    ">
+        <h3>Confirm Delete</h3>
+        <p style="opacity:0.7;">Are you sure?</p>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button onclick="confirmDelete()" class="delete">Delete</button>
+            <button onclick="closeDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script>
+function openModal(id, name, cost) {
+    document.getElementById("buyModal").style.display = "flex";
+    document.getElementById("modalItemId").value = id;
+    document.getElementById("modalText").innerText =
+        `Buy ${name} for ${cost} points?`;
+}
+
+function closeModal() {
+    document.getElementById("buyModal").style.display = "none";
+}
+
+let selectedItemId = null;
+
+function openDeleteModal(itemId) {
+    selectedItemId = itemId;
+    document.getElementById("deleteModal").style.display = "flex";
+}
+
+function closeDeleteModal() {
+    document.getElementById("deleteModal").style.display = "none";
+    selectedItemId = null;
+}
+
+function confirmDelete() {
+    if (selectedItemId) {
+        document.getElementById("delete-form-" + selectedItemId).submit();
+    }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:80vh;
+    text-align:center;
+">
+
+    <!-- LOGO -->
+    <img src="{{ url_for('static', filename='er_logo.png') }}" style="
+        width:80px;
+        margin-bottom:10px;
+        filter: drop-shadow(0 0 12px rgba(59,130,246,0.6));
+    ">
+
+    <!-- TITLE -->
+    <h1 style="
+        font-size:42px;
+        margin-bottom:5px;
+        font-weight:700;
+    ">
+        Eternal Emporium
+    </h1>
+
+    <p style="
+        opacity:0.7;
+        margin-bottom:30px;
+    ">
+        Spend your points. Claim your rewards.
+    </p>
+
+    <!-- LOGIN CARD -->
+    <div class="card" style="
+        width:350px;
+        padding:30px;
+    ">
+
+        <form method="post">
+
+            <div style="text-align:left;">
+                <label style="font-size:13px; opacity:0.7;">Username</label>
+                <input 
+                    name="username" 
+                    placeholder="Enter username" 
+                    required
+                    style="width:92%; margin: 0 auto 16px auto; display:block;"
+                >
+            </div>
+
+            <div style="text-align:left;">
+                <label style="font-size:13px; opacity:0.7;">PIN</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    placeholder="Enter PIN"
+                    maxlength="4"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    required
+                    style="width:92%; margin: 0 auto 16px auto; display:block;"
+                >
+            </div>
+
+            <button type="submit" style="margin-top:10px;">
+                Login
+            </button>
+
+        </form>
+
+        <!-- REGISTER -->
+        <a href="/register" class="register-btn">
+            Create an Account
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="max-width:1100px; margin:0 auto;">
+
+    <!-- HEADER -->
+    <div style="margin-bottom:30px;">
+        <h2 style="margin-bottom:5px;">Welcome, {{ username }}</h2>
+        <p style="opacity:0.6;">Role: {{ role }}</p>
+    </div>
+
+    <div class="profile-grid">
+
+        <!-- ACCOUNT CARD -->
+        <div class="card highlight">
+            <h3>Account</h3>
+
+            <p><strong>User:</strong> {{ username }}</p>
+
+            <p style="margin-top:10px;"><strong>RSN:</strong></p>
+            <form method="post">
+                <input 
+                    name="rsn" 
+                    value="{{ rsn or '' }}" 
+                    placeholder="Set RSN"
+                >
+                <button type="submit">Update</button>
+            </form>
+
+            <p style="margin-top:15px;"><strong>Points:</strong></p>
+            <p class="points">
+                💰 {{ "{:,}".format(points) }}
+            </p>
+        </div>
+
+        <!-- STATS CARD -->
+        <div class="card">
+            <h3>Stats</h3>
+
+            <p>
+                <strong>Total Purchases:</strong><br>
+                {{ total_purchases }}
+            </p>
+
+            {% if last_purchase %}
+            <div style="margin-top:12px;">
+                <strong>Last Purchase:</strong>
+                <p style="margin:5px 0 0 0;">
+                    {{ last_purchase[0] }}
+                </p>
+                <p style="opacity:0.6;">
+                    Cost: {{ last_purchase[1] }}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- RECENT ACTIVITY -->
+        <div class="card">
+            <h3>Recent Activity</h3>
+
+            {% for item in recent %}
+                <div style="margin-bottom:10px;">
+                    <strong>{{ item[0] }}</strong><br>
+                    <span style="opacity:0.6;">{{ item[1] }} pts</span>
+                </div>
+            {% else %}
+                <p style="opacity:0.6;">No purchases yet</p>
+            {% endfor %}
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="card">
+            <h3>Quick Actions</h3>
+
+            <a href="/store">
+                <button>Open Store</button>
+            </a>
+
+            <a href="/my_purchases">
+                <button>View Purchases</button>
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

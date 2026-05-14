@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div style="margin-bottom:25px;">
+    <h2 style="margin-bottom:5px;">Welcome, {{ username }}</h2>
+    <p style="opacity:0.6;">Role: {{ role }}</p>
+</div>
+
+<div class="grid">
+
+    <!-- ACCOUNT CARD -->
+    <div class="card" style="width:260px;">
+        <h3>Account</h3>
+        <p><strong>User:</strong> {{ username }}</p>
+        <p><strong>RSN:</strong> {{ rsn or "Not set" }}</p>
+
+        <p style="margin-top:10px;">
+            <strong>Points:</strong>
+        </p>
+        <p style="
+            font-size:24px;
+            font-weight:700;
+            color:#3b82f6;
+        ">
+            {{ points }}
+        </p>
+    </div>
+
+    <!-- STATS CARD -->
+    <div class="card" style="width:260px;">
+        <h3>Stats</h3>
+
+        <p>
+            <strong>Total Purchases:</strong><br>
+            {{ total_purchases }}
+        </p>
+
+        {% if last_purchase %}
+        <div style="margin-top:10px;">
+            <strong>Last Purchase:</strong>
+            <p style="margin:5px 0 0 0;">
+                {{ last_purchase[0] }}
+            </p>
+            <p style="opacity:0.6;">
+                Cost: {{ last_purchase[1] }}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RECENT ACTIVITY -->
+    <div class="card" style="width:260px;">
+        <h3>Recent Activity</h3>
+
+        {% for item in recent %}
+            <div style="margin-bottom:8px;">
+                <strong>{{ item[0] }}</strong><br>
+                <span style="opacity:0.6;">{{ item[1] }} pts</span>
+            </div>
+        {% else %}
+            <p style="opacity:0.6;">No purchases yet</p>
+        {% endfor %}
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="card" style="width:260px;">
+        <h3>Quick Actions</h3>
+
+        <a href="/store">
+            <button>Open Store</button>
+        </a>
+
+        <a href="/profile">
+            <button>Edit Profile</button>
+        </a>
+
+        <a href="/my_purchases">
+            <button>View Purchases</button>
+        </a>
+    </div>
+
+</div>
+
+{% endblock %}

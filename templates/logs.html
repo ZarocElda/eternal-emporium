@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Admin Ticket Updates</h2>
+
+{% if current_user.role == "owner" %}
+<form method="post"
+      onsubmit="event.preventDefault(); openModal(this, 'Clear ALL ticket logs? This cannot be undone.');"
+      style="margin-bottom:15px;">
+    
+    <input type="hidden" name="action" value="clear_logs">
+
+    <button style="background:#f59e0b;">
+        Clear Ticket Logs
+    </button>
+</form>
+{% endif %}
+
+<table border="1">
+<tr>
+    <th>User</th>
+    <th>RSN</th>
+    <th>Change</th>
+    <th>Admin</th>
+    <th>Time</th>
+</tr>
+
+{% for l in logs %}
+<tr>
+    <td>{{ l[2] }}</td>
+    <td>{{ l[3] }}</td>
+
+    {% if l[0] > 0 %}
+        <td style="color:limegreen; font-weight:600;">
+            +{{ l[0] }}
+        </td>
+    {% else %}
+        <td style="color:red; font-weight:600;">
+            {{ l[0] }}
+        </td>
+    {% endif %}
+
+    <td>{{ l[4] }}</td>
+    <td>
+    {{ l[1].strftime('%m/%d/%y %I:%M %p') if l[1] else '' }}
+</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+<!-- DELETE CONFIRM MODAL -->
+<div id="confirmModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.6);
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+">
+    <div style="
+        background:#1f2937;
+        padding:20px;
+        border-radius:10px;
+        width:300px;
+        text-align:center;
+    ">
+        <p id="modalText" style="margin-bottom:15px;">
+            Are you sure?
+        </p>
+
+        <button id="confirmBtn" style="margin-right:10px;">
+            Yes
+        </button>
+
+        <button onclick="closeModal()" style="background:#6b7280;">
+            Cancel
+        </button>
+    </div>
+</div>
+<script>
+let currentForm = null;
+
+function openModal(form, message) {
+    currentForm = form;
+    document.getElementById("modalText").innerText = message;
+    document.getElementById("confirmModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("confirmModal").style.display = "none";
+    currentForm = null;
+}
+
+document.getElementById("confirmBtn").addEventListener("click", function() {
+    if (currentForm) {
+        currentForm.submit();
+    }
+});
+</script>
+
+{% endblock %}

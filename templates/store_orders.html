@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="margin-bottom:10px;">Player Store Orders</h2>
+<p style="opacity:0.6; margin-bottom:20px;">
+    View all purchases made by players
+</p>
+
+{% if current_user.role == "owner" %}
+<form method="post"
+      onsubmit="event.preventDefault(); openModal(this, 'Delete ALL store purchases? This cannot be undone.');"
+      style="margin-bottom:15px;">
+    
+    <input type="hidden" name="action" value="clear_purchases">
+
+    <button class="delete">
+        Clear Store Purchases
+    </button>
+</form>
+{% endif %}
+
+<input id="search" placeholder="Search user, RSN, item..." 
+style="
+    width:100%;
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:8px;
+    border:1px solid #2e3b55;
+    background:#0b162b;
+    color:white;
+">
+
+<div class="table-container">
+
+<table>
+    <tr>
+        <th>User</th>
+        <th>RSN</th>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Cost</th>
+        <th>Time</th>
+    </tr>
+
+    {% for o in orders %}
+    <tr>
+        <td>{{ o[0] }}</td>
+        <td>{{ o[1] }}</td>
+        <td>{{ o[2] }}</td>
+        <td>{{ o[3] }}</td>
+        <td>{{ o[4] }}</td>
+        <td>
+            {{ o[5].strftime('%m/%d/%y %I:%M %p') if o[5] else '' }}
+        </td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+<script>
+document.getElementById("search").addEventListener("keyup", function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll("table tr");
+
+    rows.forEach((row, index) => {
+        if (index === 0) return; // skip header
+
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+    });
+});
+</script>
+
+</div>
+
+{% endblock %}
