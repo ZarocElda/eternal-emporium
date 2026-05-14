@@ -372,9 +372,6 @@ def store():
     cur.close()
     conn.close()
 
-    cur.execute("SELECT points FROM users WHERE id = %s", (current_user.id,))
-    points = cur.fetchone()[0]
-
     return render_template(
         "store.html",
         items=[
@@ -382,7 +379,6 @@ def store():
             for i in items
         ],
         is_owner=(current_user.role == "owner"),
-        user_points=points
     )
 
 # ================= ADMIN =================
