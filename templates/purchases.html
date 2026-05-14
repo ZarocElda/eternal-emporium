@@ -4,18 +4,20 @@
 
 <h2>My Purchases</h2>
 
-<table border="1">
+<table>
 <tr>
     <th>Item</th>
-    <th>Cost</th>
+    <th>Quantity</th>
+    <th>Total Cost</th>
     <th>Date</th>
 </tr>
 
 {% for p in purchases %}
 <tr>
-    <td>{{ p[0] }}</td>
-    <td>{{ p[1] }}</td>
-    <td>{{ p[2] }}</td>
+    <td>{{ p[0] }}</td>        <!-- item -->
+    <td>{{ p[1] }}</td>        <!-- quantity -->
+    <td>{{ p[2] }} pts</td>    <!-- total cost -->
+    <td>{{ p[3] }}</td>        <!-- timestamp -->
 </tr>
 {% endfor %}
 
