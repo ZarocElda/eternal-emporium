@@ -2,9 +2,8 @@
 
 {% block content %}
 
-<!-- HEADER -->
 <div style="margin-bottom:25px;">
-    <h2 style="margin-bottom:5px;">Store</h2>
+    <h2>Store</h2>
     <p style="opacity:0.6;">Browse and purchase rewards</p>
 </div>
 
@@ -13,7 +12,6 @@
 {% if is_owner %}
 <div class="card" style="width:260px;">
     <h3>Create Item</h3>
-
     <form method="post" enctype="multipart/form-data">
         <input name="name" placeholder="Item Name" required>
         <input name="cost" placeholder="Cost" required>
@@ -25,10 +23,8 @@
 {% endif %}
 
 {% for item in items %}
-
 <div class="card" style="width:260px;">
 
-    <!-- IMAGE -->
     <div style="height:140px; display:flex; align-items:center; justify-content:center; background:#020617; border-radius:8px; margin-bottom:10px; overflow:hidden;">
         {% if item.image %}
             <img src="{{ item.image }}" style="max-width:100%; max-height:100%; object-fit:contain;">
@@ -38,43 +34,19 @@
     </div>
 
     {% if is_owner %}
-
         <form method="post">
-            <input name="image" value="{{ item.image or '' }}" placeholder="Image URL">
-            <input name="name" value="{{ item.name or '' }}">
+            <input name="image" value="{{ item.image or '' }}">
+            <input name="name" value="{{ item.name }}">
             <input name="cost" value="{{ item.cost }}">
             <input name="quantity" value="{{ item.quantity }}">
             <input type="hidden" name="item_id" value="{{ item.id }}">
-
-            <button name="update_item">Save Changes</button>
-
-            <button type="button" class="delete" onclick="openDeleteModal('{{ item.id }}')">
-                Delete
-            </button>
+            <button name="update_item">Save</button>
         </form>
-
-        <form id="delete-form-{{ item.id }}" method="post" style="display:none;">
-            <input type="hidden" name="item_id" value="{{ item.id }}">
-            <input type="hidden" name="delete_item" value="1">
-        </form>
-
     {% else %}
 
-        <h3 style="margin-bottom:5px;">{{ item.name }}</h3>
-
-        <p style="font-size:22px; font-weight:800; color:#3b82f6; margin:5px 0;">
-            {{ item.cost }} pts
-        </p>
-
-        <p style="opacity:0.7;">
-            Stock: {{ item.quantity }}
-        </p>
-
-        {% if item.quantity <= 3 %}
-            <p style="color:#f59e0b;font-size:12px;">
-                Low stock
-            </p>
-        {% endif %}
+        <h3>{{ item.name }}</h3>
+        <p style="color:#3b82f6; font-weight:bold;">{{ item.cost }} pts</p>
+        <p>Stock: {{ item.quantity }}</p>
 
         <button 
             type="button"
@@ -83,19 +55,17 @@
             data-name="{{ item.name }}"
             data-cost="{{ item.cost }}"
             data-stock="{{ item.quantity }}"
+            data-image="{{ item.image }}"
         >
             Buy
         </button>
 
     {% endif %}
-
 </div>
-
 {% endfor %}
-
 </div>
 
-<!-- ================= BUY MODAL ================= -->
+<!-- ================= MODAL ================= -->
 <div id="buyModal" style="
     display:none;
     position:fixed;
@@ -104,162 +74,86 @@
     width:100%;
     height:100%;
     background:rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-    display:flex;
     align-items:center;
     justify-content:center;
     z-index:1000;
 ">
-    <div style="background:#1e293b; padding:25px; border-radius:12px; width:300px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
-        
-        <p id="modalText" style="margin-bottom:15px;"></p>
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:300px;
+        text-align:center;
+    ">
+
+        <!-- ✅ ITEM INFO -->
+        <img id="modalImage" style="max-width:100px; margin-bottom:10px;">
+        <h3 id="modalName"></h3>
+        <p id="modalCost" style="color:#3b82f6;"></p>
 
         <form method="post">
-
             <input type="hidden" name="item_id" id="modalItemId">
             <input type="hidden" id="userPoints" value="{{ user_points }}">
 
-            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px;">
+            <div style="display:flex; gap:10px; justify-content:center; margin:15px 0;">
                 <button type="button" onclick="changeQty(-1)">-</button>
 
-                <input 
-                    type="number"
-                    id="modalQty"
-                    name="quantity"
-                    value="1"
-                    min="1"
-                    style="width:60px; text-align:center;"
-                >
+                <input id="modalQty" name="quantity" value="1" type="number" min="1" style="width:60px; text-align:center;">
 
                 <button type="button" onclick="changeQty(1)">+</button>
             </div>
 
-            <p id="modalTotal" style="margin-bottom:15px; font-weight:600; color:#3b82f6;"></p>
-            <p id="modalMessage" style="font-size:12px; margin-top:5px;"></p>
+            <p id="modalTotal"></p>
+            <p id="modalMessage"></p>
 
             <button name="buy_item">Confirm Purchase</button>
-
         </form>
 
-        <button onclick="closeModal()" style="margin-top:10px; background:transparent; border:1px solid #3b82f6;">
-            Cancel
-        </button>
-
-    </div>
-</div>
-
-<!-- DELETE MODAL -->
-<div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000;">
-    <div style="background:#1e293b; padding:25px; border-radius:12px; width:300px; text-align:center;">
-        <h3>Confirm Delete</h3>
-        <p style="opacity:0.7;">Are you sure?</p>
-
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button onclick="confirmDelete()" class="delete">Delete</button>
-            <button onclick="closeDeleteModal()">Cancel</button>
-        </div>
+        <button onclick="closeModal()">Cancel</button>
     </div>
 </div>
 
 <script>
 let currentItemCost = 0;
 let currentItemStock = 0;
-let currentItemName = "";
 
 function openModal(btn) {
-    const id = btn.dataset.id;
-    const name = btn.dataset.name;
-    const cost = parseInt(btn.dataset.cost);
-    const stock = parseInt(btn.dataset.stock);
+    document.getElementById("buyModal").style.display = "flex";
 
-    const modal = document.getElementById("buyModal");
-    modal.style.display = "flex";
-
-    document.getElementById("modalItemId").value = id;
+    document.getElementById("modalItemId").value = btn.dataset.id;
     document.getElementById("modalQty").value = 1;
 
-    currentItemCost = cost;
-    currentItemStock = stock;
-    currentItemName = name;
+    currentItemCost = parseInt(btn.dataset.cost);
+    currentItemStock = parseInt(btn.dataset.stock);
+
+    document.getElementById("modalName").innerText = btn.dataset.name;
+    document.getElementById("modalCost").innerText = btn.dataset.cost + " pts";
+    document.getElementById("modalImage").src = btn.dataset.image || "";
 
     updateTotal();
 }
 
 function changeQty(amount) {
     let input = document.getElementById("modalQty");
-    let value = parseInt(input.value) || 1;
+    let val = parseInt(input.value) || 1;
 
-    value += amount;
+    val += amount;
+    if (val < 1) val = 1;
+    if (val > currentItemStock) val = currentItemStock;
 
-    if (value < 1) value = 1;
-    if (value > currentItemStock) value = currentItemStock;
-
-    input.value = value;
-
+    input.value = val;
     updateTotal();
 }
 
 function updateTotal() {
-    let qtyInput = document.getElementById("modalQty");
-    let qty = parseInt(qtyInput.value) || 1;
-
+    let qty = parseInt(document.getElementById("modalQty").value) || 1;
     let total = qty * currentItemCost;
 
-    let userPointsEl = document.getElementById("userPoints");
-    let userPoints = userPointsEl ? parseInt(userPointsEl.value) : 0;
-
-    if (qty > currentItemStock) {
-        qty = currentItemStock;
-        qtyInput.value = qty;
-    }
-
-    document.getElementById("modalText").innerText =
-        `Buy ${qty} x ${currentItemName}?`;
-
-    document.getElementById("modalTotal").innerText =
-        `Total: ${total} points`;
-
-    let message = "";
-
-    if (qty === currentItemStock) message = "Max stock reached";
-    if (total > userPoints) message = "Not enough points";
-    if (total <= userPoints) message = `Remaining after purchase: ${userPoints - total}`;
-
-    document.getElementById("modalMessage").innerText = message;
-
-    const minusBtn = document.querySelector('#buyModal button[onclick="changeQty(-1)"]');
-    const plusBtn = document.querySelector('#buyModal button[onclick="changeQty(1)"]');
-    const buyBtn = document.querySelector('#buyModal button[name="buy_item"]');
-
-    if (minusBtn) minusBtn.disabled = (qty <= 1);
-    if (plusBtn) plusBtn.disabled = (qty >= currentItemStock);
-    if (buyBtn) buyBtn.disabled = (total > userPoints || qty < 1);
+    document.getElementById("modalTotal").innerText = "Total: " + total + " pts";
 }
-
-document.addEventListener("input", function(e) {
-    if (e.target.id === "modalQty") updateTotal();
-});
 
 function closeModal() {
     document.getElementById("buyModal").style.display = "none";
-}
-
-let selectedItemId = null;
-
-function openDeleteModal(itemId) {
-    selectedItemId = itemId;
-    document.getElementById("deleteModal").style.display = "flex";
-}
-
-function closeDeleteModal() {
-    document.getElementById("deleteModal").style.display = "none";
-    selectedItemId = null;
-}
-
-function confirmDelete() {
-    if (selectedItemId) {
-        document.getElementById("delete-form-" + selectedItemId).submit();
-    }
 }
 </script>
 
