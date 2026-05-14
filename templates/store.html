@@ -76,7 +76,6 @@
             </p>
         {% endif %}
 
-        <!-- ✅ FIXED BUTTON -->
         <button 
             type="button"
             onclick="openModal(this)"
@@ -97,7 +96,7 @@
 </div>
 
 <!-- ================= BUY MODAL ================= -->
-<div id="buyModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items:center; justify-content:center; z-index:1000;">
+<div id="buyModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index:1000;">
     <div style="background:#1e293b; padding:25px; border-radius:12px; width:300px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
         
         <p id="modalText" style="margin-bottom:15px;"></p>
@@ -105,8 +104,8 @@
         <form method="post">
 
             <input type="hidden" name="item_id" id="modalItemId">
+            <input type="hidden" id="userPoints" value="{{ user_points }}">
 
-            <!-- QUANTITY -->
             <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px;">
                 <button type="button" onclick="changeQty(-1)">-</button>
 
@@ -122,8 +121,8 @@
                 <button type="button" onclick="changeQty(1)">+</button>
             </div>
 
-            <!-- TOTAL -->
             <p id="modalTotal" style="margin-bottom:15px; font-weight:600; color:#3b82f6;"></p>
+            <p id="modalMessage" style="font-size:12px; margin-top:5px;"></p>
 
             <button name="buy_item">Confirm Purchase</button>
 
@@ -136,7 +135,7 @@
     </div>
 </div>
 
-<!-- DELETE MODAL (UNCHANGED) -->
+<!-- DELETE MODAL -->
 <div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000;">
     <div style="background:#1e293b; padding:25px; border-radius:12px; width:300px; text-align:center;">
         <h3>Confirm Delete</h3>
@@ -149,20 +148,21 @@
     </div>
 </div>
 
-<!-- ================= FIXED SCRIPTS ================= -->
 <script>
 let currentItemCost = 0;
 let currentItemStock = 0;
 let currentItemName = "";
 
 function openModal(btn) {
-
     const id = btn.dataset.id;
     const name = btn.dataset.name;
     const cost = parseInt(btn.dataset.cost);
     const stock = parseInt(btn.dataset.stock);
 
-    document.getElementById("buyModal").style.display = "flex";
+    const modal = document.getElementById("buyModal");
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
 
     document.getElementById("modalItemId").value = id;
     document.getElementById("modalQty").value = 1;
@@ -189,26 +189,44 @@ function changeQty(amount) {
 }
 
 function updateTotal() {
-    let qty = parseInt(document.getElementById("modalQty").value) || 1;
+    let qtyInput = document.getElementById("modalQty");
+    let qty = parseInt(qtyInput.value) || 1;
+
+    let total = qty * currentItemCost;
+
+    let userPointsEl = document.getElementById("userPoints");
+    let userPoints = userPointsEl ? parseInt(userPointsEl.value) : 0;
 
     if (qty > currentItemStock) {
         qty = currentItemStock;
-        document.getElementById("modalQty").value = qty;
+        qtyInput.value = qty;
     }
-
-    let total = qty * currentItemCost;
 
     document.getElementById("modalText").innerText =
         `Buy ${qty} x ${currentItemName}?`;
 
     document.getElementById("modalTotal").innerText =
         `Total: ${total} points`;
+
+    let message = "";
+
+    if (qty === currentItemStock) message = "Max stock reached";
+    if (total > userPoints) message = "Not enough points";
+    if (total <= userPoints) message = `Remaining after purchase: ${userPoints - total}`;
+
+    document.getElementById("modalMessage").innerText = message;
+
+    const minusBtn = document.querySelector('#buyModal button[onclick="changeQty(-1)"]');
+    const plusBtn = document.querySelector('#buyModal button[onclick="changeQty(1)"]');
+    const buyBtn = document.querySelector('#buyModal button[name="buy_item"]');
+
+    if (minusBtn) minusBtn.disabled = (qty <= 1);
+    if (plusBtn) plusBtn.disabled = (qty >= currentItemStock);
+    if (buyBtn) buyBtn.disabled = (total > userPoints || qty < 1);
 }
 
 document.addEventListener("input", function(e) {
-    if (e.target.id === "modalQty") {
-        updateTotal();
-    }
+    if (e.target.id === "modalQty") updateTotal();
 });
 
 function closeModal() {
