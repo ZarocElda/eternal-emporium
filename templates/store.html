@@ -42,6 +42,9 @@
             <input name="quantity" value="{{ item.quantity }}">
             <input type="hidden" name="item_id" value="{{ item.id }}">
             <button name="update_item">Save Changes</button>
+            <button name="delete_item" value="1" class="delete">
+            Delete
+            </button>
         </form>
     {% else %}
 
