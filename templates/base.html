@@ -312,6 +312,18 @@
     text-decoration: none;
     color: white;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand img {
+    transition: 0.2s ease;
+}
+
+.brand:hover img {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 6px rgba(59,130,246,0.6));
 }
 
     </style>
@@ -322,7 +334,18 @@
 <div class="nav">
     {% if current_user.is_authenticated %}
         <div class="nav-left">
-            <a href="/store" class="brand">Eternal Emporium</a>
+            <a href="/store" class="brand" style="display:flex; align-items:center; gap:10px;">
+    
+                <img src="{{ url_for('static', filename='/er-header-logo.png') }}" 
+                    style="
+                        height:28px;
+                        width:auto;
+                        object-fit:contain;
+                    ">
+
+                <span>Eternal Emporium</span>
+
+            </a>
 
             <a href="/store"
             class="{% if request.path.startswith('/store') %}active-nav{% endif %}">
@@ -439,7 +462,7 @@ function goBack() {
             Yes
         </button>
 
-        <button onclick="closeModal()" style="background:#6b7280;">
+        <button onclick="closeConfirmModal()" style="background:#6b7280;">
             Cancel
         </button>
     </div>
@@ -448,13 +471,13 @@ function goBack() {
 <script>
 let currentForm = null;
 
-function openModal(form, message) {
+function openConfirmModal(form, message) {
     currentForm = form;
     document.getElementById("modalText").innerText = message;
     document.getElementById("confirmModal").style.display = "flex";
 }
 
-function closeModal() {
+function closeConfirmModal() {
     document.getElementById("confirmModal").style.display = "none";
     currentForm = null;
 }
