@@ -403,7 +403,7 @@ def admin():
 # ================= BULK APPLY =================
         if request.form.get("bulk_apply"):
 
-            selected_users = request.form.getlist("selected_users[]")
+            selected_users = request.form.getlist("selected_users")
             if not isinstance(selected_users, list):
                 selected_users = [selected_users]
             bulk_amount = request.form.get("bulk_amount")
