@@ -5,6 +5,8 @@ from flask import Flask, request, redirect, url_for, render_template, flash
 import psycopg2
 from dotenv import load_dotenv
 from datetime import timedelta
+from datetime import datetime
+import pytz
 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -599,6 +601,19 @@ def ticket_logs():
         ORDER BY pl.timestamp DESC
     """)
     logs = cur.fetchall()
+
+    est = pytz.timezone("US/Eastern")
+
+    converted_logs = []
+    for log in logs:
+        timestamp = log[1]
+
+        if timestamp:
+            timestamp = timestamp.replace(tzinfo=pytz.utc).astimezone(est)
+
+        converted_logs.append((log[0], timestamp, log[2], log[3], log[4]))
+
+    logs = converted_logs
 
     cur.close()
     conn.close()
