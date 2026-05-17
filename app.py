@@ -402,9 +402,11 @@ def admin():
         if request.form.get("bulk_apply"):
 
             selected_users = request.form.getlist("selected_users[]")
+            if not isinstance(selected_users, list):
+               selected_users = [selected_users]
             bulk_amount = request.form.get("bulk_amount")
 
-            if not selected_users or not amount:
+            if not selected_users or not bulk_amount:
                 flash("Select users and enter an amount", "error")
                 return redirect(url_for("admin"))
 
