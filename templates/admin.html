@@ -214,15 +214,19 @@
             </button>
         </div>
 
-        <button name="action" value="delete" style="
-            background:red;
-            width:100%;
-            margin-top:15px;
+        <button type="button"
+            onclick="confirmDeleteUser()"
+            style="
+                background:red;
+                width:100%;
+                margin-top:15px;
         ">
             Delete User
         </button>
 
         {% endif %}
+
+        <input type="hidden" name="action" id="modalAction">
 
     </form>
 
@@ -358,6 +362,20 @@ function openUserModal(id, username, rsn, points, role) {
 
 function closeUserModal() {
     document.getElementById("userModal").style.display = "none";
+}
+</script>
+
+<script>
+function confirmDeleteUser() {
+    const form = document.querySelector("#userModal form");
+
+    openConfirmModal(
+        form,
+        "⚠️ Are you sure you want to DELETE this user?\n\nThis cannot be undone."
+    );
+
+    // Set action BEFORE submit
+    document.getElementById("modalAction").value = "delete";
 }
 </script>
 
