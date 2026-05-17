@@ -396,7 +396,7 @@ def admin():
         user_id = request.form.get("user_id")
 
         # ❌ BLOCK self edits ONLY for non-admins
-        if int(user_id) == int(current_user.id) and current_user.role not in ["admin", "owner"]:
+        if user_id and int(user_id) == int(current_user.id) and current_user.role not in ["admin", "owner"]:
             flash("You cannot modify yourself", "error")
             return redirect(url_for("admin"))
 
@@ -405,7 +405,7 @@ def admin():
 
             selected_users = request.form.getlist("selected_users[]")
             if not isinstance(selected_users, list):
-               selected_users = [selected_users]
+                selected_users = [selected_users]
             bulk_amount = request.form.get("bulk_amount")
 
             if not selected_users or not bulk_amount:
@@ -446,9 +446,10 @@ def admin():
             return redirect(url_for("admin"))
 
         # POINTS
-        if single_amount not in (None, ""):
+        if amount not in (None, ""):
             try:
-                single_amount = int(single_amount)
+                amount = int(amount)
+
                 cur.execute(
                     "UPDATE users SET points = points + %s WHERE id = %s",
                     (amount, user_id)
@@ -462,6 +463,7 @@ def admin():
             except:
                 flash("Invalid amount", "error")
                 return redirect(url_for("admin"))
+    
 
         # ROLE
         if role:
