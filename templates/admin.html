@@ -91,7 +91,9 @@
         {{ u[5] if u[5] else "None" }}
     </td>
 
-    <td>{{ u[6] }}</td>
+    <td>
+        {{ u[6].strftime('%m/%d/%y %I:%M %p') if u[6] else '' }}
+    </td>
 
     <td>
         <button onclick="openUserModal('{{ u[0] }}', '{{ u[1]|escape }}')" style="
