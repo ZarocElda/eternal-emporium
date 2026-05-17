@@ -137,26 +137,20 @@
 
     <!-- X BUTTON -->
 
-    <div style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        margin-bottom:15px;
+    <h3 id="modalName" style="margin-bottom:15px;"></h3>
+
+    <button onclick="closeUserModal()" style="
+        position:absolute;
+        top:15px;
+        right:15px;
+        background:none;
+        border:none;
+        color:#94a3b8;
+        font-size:20px;
+        cursor:pointer;
     ">
-
-        <h3 id="modalName" style="margin:0;"></h3>
-
-        <button onclick="closeUserModal()" style="
-            background:none;
-            border:none;
-            color:#94a3b8;
-            font-size:20px;
-            cursor:pointer;
-        ">
-            ×
-        </button>
-
-    </div>
+        ×
+    </button>
 
     <form method="post">
 
@@ -172,23 +166,29 @@
 
         {% if current_user.role == "owner" %}
 
+        <hr style="margin:15px 0;">
+
         <div style="margin-bottom:15px;">
-            <button name="action" value="reset_pin" style="background:#f59e0b; width:100%;">
-                Reset PIN
+            <input name="new_pin" placeholder="Set new PIN" style="width:100%; max-width:300px;">
+        </div>
+
+        <div style="margin-bottom:15px;"
+             style="background:#f59e0b; width:100%;">
+                <button name="action" value="reset_pin"set PIN>
             </button>
         </div>
 
-        <hr style="margin:15px 0;">
-
-        <input name="new_pin" placeholder="Set new PIN">
-
-        <button name="action" value="set_pin" style="margin-top:6px;">
+        <button name="action" value="set_pin" style="
+            width:100%;
+            margin-bottom:20px;
+        ">
             Set PIN
         </button>
 
         <div style="display:flex; gap:10px;">
             <hr style="margin:15px 0;">
 
+            <hr style="margin:20px 0;">
             <select name="role" style="
                 width:100%;
                 padding:10px;
