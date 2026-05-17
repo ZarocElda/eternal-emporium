@@ -70,18 +70,13 @@ def register():
             flash("PIN must be 4 digits", "error")
             return render_template("register.html")
 
-        cur.execute(
-            "INSERT INTO users (username, password, role, pin) VALUES (%s, %s, %s, %s)",
-            (username, pin, "user", pin)
-        )
-
         conn = get_db_connection()
         cur = conn.cursor()
 
         try:
             cur.execute(
                 "INSERT INTO users (username, password, role, pin) VALUES (%s, %s, %s, %s)",
-                (username, hashed_pin, "user", pin)
+                (username, pin, "user", pin)
             )
             conn.commit()
         except:
