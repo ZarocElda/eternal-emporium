@@ -13,6 +13,19 @@
     <input id="search" placeholder="Search users..." style="max-width:300px;">
 </div>
 
+<!-- BULK ACTION BAR -->
+<div style="margin-bottom:20px; display:flex; gap:10px; align-items:center;">
+
+    <input 
+        id="bulkAmount"
+        placeholder="Points (+ or -)"
+        style="width:150px;"
+    >
+
+    <button onclick="applyBulk()">Apply to Selected</button>
+
+</div>
+
 <!-- SCROLL AREA -->
 <div style="
     max-height:70vh;
@@ -24,6 +37,9 @@
 
 {% for u in users %}
 <div class="card user-card" style="width:260px;">
+<div style="margin-bottom:10px;">
+    <input type="checkbox" class="bulk-user" value="{{ u[0] }}">
+</div>
 
     <!-- USER NAME -->
     <h3 class="username" style="margin-bottom:5px;">
@@ -222,6 +238,54 @@ function confirmDelete() {
     if (selectedUserId) {
         document.getElementById("delete-form-" + selectedUserId).submit();
     }
+}
+</script>
+
+<script>
+function applyBulk() {
+    let amount = document.getElementById("bulkAmount").value;
+
+    if (!amount) {
+        alert("Enter an amount");
+        return;
+    }
+
+    let users = document.querySelectorAll(".bulk-user:checked");
+
+    if (users.length === 0) {
+        alert("Select at least one user");
+        return;
+    }
+
+    // Create form dynamically
+    let form = document.createElement("form");
+    form.method = "POST";
+
+    // Add amount
+    let amountInput = document.createElement("input");
+    amountInput.type = "hidden";
+    amountInput.name = "bulk_amount";
+    amountInput.value = amount;
+    form.appendChild(amountInput);
+
+    // Add action flag
+    let actionInput = document.createElement("input");
+    actionInput.type = "hidden";
+    actionInput.name = "bulk_apply";
+    actionInput.value = "1";
+    form.appendChild(actionInput);
+
+    // Add selected users
+    users.forEach(user => {
+        let input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "selected_users";
+        input.value = user.value;
+        form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 
