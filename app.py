@@ -70,7 +70,10 @@ def register():
             flash("PIN must be 4 digits", "error")
             return render_template("register.html")
 
-        hashed_pin = generate_password_hash(pin)
+        cur.execute(
+            "INSERT INTO users (username, password, role, pin) VALUES (%s, %s, %s, %s)",
+            (username, pin, "user", pin)
+        )
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -116,7 +119,7 @@ def login():
         cur.close()
         conn.close()
 
-        if user and check_password_hash(user[2], password):
+        if user and user[2] == password:
             from flask import session
             session.permanent = True
             login_user(User(*user))
@@ -478,9 +481,14 @@ def admin():
 
         # SET PIN
         if action == "set_pin":
+
+            if len(new_pin) != 4 or not new_pin.isdigit():
+                flash("PIN must be 4 digits", "error")
+                return redirect(url_for("admin"))
+
             cur.execute(
-                "UPDATE users SET pin = %s WHERE id = %s",
-                (new_pin, user_id)
+                "UPDATE users SET pin = %s, password = %s WHERE id = %s",
+                (new_pin, new_pin, user_id)
             )
 
         # RESET PIN
