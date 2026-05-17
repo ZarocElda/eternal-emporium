@@ -90,7 +90,7 @@
     </td>
 
     <td style="color:#facc15;">
-        {{ u[5] if u[5] else "None" }}
+        {{ "Set" if u[5] else "None" }}
     </td>
 
     <td>{{ u[6] }}</td>
@@ -136,7 +136,19 @@
         cursor:pointer;
     ">✕</button>
 
-    <h3 id="modalName" style="margin-bottom:15px;"></h3>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="modalName" style="margin:0;"></h3>
+
+        <button onclick="closeUserModal()" style="
+            background:none;
+            border:none;
+            color:white;
+            font-size:22px;
+            cursor:pointer;
+        ">
+            ✕
+        </button>
+    </div>
 
     <form method="post">
 
@@ -158,9 +170,34 @@
             </button>
         </div>
 
+        <hr style="margin:15px 0;">
+
+        <input name="new_pin" placeholder="Set new PIN">
+
+        <button name="action" value="set_pin" style="margin-top:6px;">
+            Set PIN
+        </button>
+
         <div style="display:flex; gap:10px;">
-            <button name="role" value="admin" style="flex:1;">Make Admin</button>
-            <button name="role" value="user" style="flex:1;">Make User</button>
+            <hr style="margin:15px 0;">
+
+            <select name="role" style="
+                width:100%;
+                padding:10px;
+                border-radius:8px;
+                background:#020617;
+                color:white;
+                border:1px solid #334155;
+            ">
+                <option value="">Change Role</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+
+            <button style="margin-top:8px;">
+                Update Role
+            </button>
         </div>
 
         <button name="action" value="delete" style="

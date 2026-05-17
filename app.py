@@ -477,14 +477,16 @@ def admin():
             )
 
         # SET PIN
-        if new_pin:
+        if action == "set_pin":
             if current_user.role != "owner":
                 flash("Only owners can set PINs", "error")
                 return redirect(url_for("admin"))
 
+            hashed_pin = generate_password_hash(new_pin)
+
             cur.execute(
                 "UPDATE users SET pin = %s WHERE id = %s",
-                (new_pin, user_id)
+                (hashed_pin, user_id)
             )
 
         # RESET PIN
@@ -517,7 +519,7 @@ def admin():
 
     # ================= GET (ALWAYS RUNS) =================
     cur.execute("""
-        SELECT id, username, rsn, points, role, pin
+        SELECT id, username, rsn, points, role, pin, created_at
         FROM users
         ORDER BY id ASC
     """)
