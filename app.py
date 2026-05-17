@@ -393,16 +393,6 @@ def admin():
 
     if request.method == "POST":
 
-        user_id = request.form.get("user_id")
-        amount = request.form.get("amount")
-        role = request.form.get("role")
-        action = request.form.get("action")
-        new_pin = request.form.get("new_pin")
-
-        if not user_id:
-            flash("Invalid request", "error")
-            return redirect(url_for("admin"))
-
         # ❌ BLOCK self edits ONLY for non-admins
         if int(user_id) == int(current_user.id) and current_user.role not in ["admin", "owner"]:
             flash("You cannot modify yourself", "error")
@@ -439,6 +429,16 @@ def admin():
             conn.commit()
 
             flash(f"Updated {len(selected_users)} users", "success")
+            return redirect(url_for("admin"))
+        
+        user_id = request.form.get("user_id")
+        amount = request.form.get("amount")
+        role = request.form.get("role")
+        action = request.form.get("action")
+        new_pin = request.form.get("new_pin")
+
+        if not user_id:
+            flash("Invalid request", "error")
             return redirect(url_for("admin"))
 
         # POINTS
