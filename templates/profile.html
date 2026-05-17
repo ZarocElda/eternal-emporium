@@ -19,41 +19,18 @@
             <p><strong>User:</strong> {{ username }}</p>
 
             <p style="margin-top:10px;"><strong>RSN:</strong></p>
-            <form method="post">
-                <input 
-                    name="rsn" 
-                    value="{{ rsn or '' }}" 
-                    placeholder="Set RSN"
-                >
-                <button type="submit">Update</button>
-            </form>
+
+            <p style="margin-top:10px;"><strong>RSN:</strong> {{ rsn or "Not Set" }}</p>
+
+            <button onclick="openRsnModal()" style="margin-top:10px; width:100%;">
+                Update RSN
+            </button>
 
             <hr style="margin:25px 0;">
 
-            <h3>Change PIN</h3>
-
-            <form method="post">
-
-                <div style="margin-bottom:10px;">
-                    <label style="font-size:12px; opacity:.7;">Current PIN</label>
-                    <input name="current_pin" required>
-                </div>
-
-                <div style="margin-bottom:10px;">
-                    <label style="font-size:12px; opacity:.7;">New PIN</label>
-                    <input name="new_pin" required>
-                </div>
-
-                <div style="margin-bottom:10px;">
-                    <label style="font-size:12px; opacity:.7;">Confirm New PIN</label>
-                    <input name="confirm_pin" required>
-                </div>
-
-                <button style="margin-top:10px;">
-                    Update PIN
-                </button>
-
-            </form>
+            <button onclick="openPinModal()" style="margin-top:15px; width:100%;">
+                Change PIN
+            </button>
 
             <p style="margin-top:15px;"><strong>Points:</strong></p>
             <p class="points">
@@ -114,4 +91,117 @@
 
 </div>
 
+<!-- RSN MODAL -->
+<div id="rsnModal" style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+">
+
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:350px;
+        position:relative;
+    ">
+
+        <button onclick="closeRsnModal()" style="
+            position:absolute;
+            top:12px;
+            right:12px;
+            background:none;
+            border:none;
+            color:#94a3b8;
+            font-size:20px;
+            cursor:pointer;
+        ">×</button>
+
+        <h3>Update RSN</h3>
+
+        <form method="post">
+            <input name="rsn" placeholder="Enter new RSN" style="width:100%; margin-top:10px;">
+            <button style="margin-top:15px; width:100%;">Update</button>
+        </form>
+
+    </div>
+</div>
+
+<!-- PIN MODAL -->
+<div id="pinModal" style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+">
+
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:350px;
+        position:relative;
+    ">
+
+        <button onclick="closePinModal()" style="
+            position:absolute;
+            top:12px;
+            right:12px;
+            background:none;
+            border:none;
+            color:#94a3b8;
+            font-size:20px;
+            cursor:pointer;
+        ">×</button>
+
+        <h3>Change PIN</h3>
+
+        <form method="post">
+
+            <div style="margin-top:10px;">
+                <label style="font-size:12px; opacity:.7;">Current PIN</label>
+                <input name="current_pin" required style="width:100%;">
+            </div>
+
+            <div style="margin-top:10px;">
+                <label style="font-size:12px; opacity:.7;">New PIN</label>
+                <input name="new_pin" required style="width:100%;">
+            </div>
+
+            <div style="margin-top:10px;">
+                <label style="font-size:12px; opacity:.7;">Confirm New PIN</label>
+                <input name="confirm_pin" required style="width:100%;">
+            </div>
+
+            <button style="margin-top:15px; width:100%;">
+                Update PIN
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+<script>
+function openRsnModal() {
+    document.getElementById("rsnModal").style.display = "flex";
+}
+function closeRsnModal() {
+    document.getElementById("rsnModal").style.display = "none";
+}
+
+function openPinModal() {
+    document.getElementById("pinModal").style.display = "flex";
+}
+function closePinModal() {
+    document.getElementById("pinModal").style.display = "none";
+}
+</script>
 {% endblock %}
