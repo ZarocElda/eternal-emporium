@@ -492,7 +492,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const btn = document.getElementById("confirmBtn");
     if (btn) {
         btn.addEventListener("click", function () {
-            if (currentForm) currentForm.submit();
+            if (currentForm) {
+
+                // ✅ ONLY set delete here
+                const actionInput = document.getElementById("modalAction");
+                if (actionInput) {
+                    actionInput.value = "delete";
+                }
+
+                currentForm.submit();
+            }
         });
     }
 });
