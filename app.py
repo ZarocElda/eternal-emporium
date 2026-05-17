@@ -180,11 +180,52 @@ def profile():
     cur = conn.cursor()
 
     if request.method == "POST":
-        new_rsn = request.form["rsn"]
 
-        cur.execute("SELECT id FROM users WHERE rsn = %s AND id != %s", (new_rsn, current_user.id))
-        if cur.fetchone():
-            flash("RSN already in use", "error")
+        # ================= CHANGE PIN =================
+        if "current_pin" in request.form:
+
+            current_pin = request.form["current_pin"]
+            new_pin = request.form["new_pin"]
+            confirm_pin = request.form["confirm_pin"]
+
+            cur.execute("SELECT pin FROM users WHERE id = %s", (current_user.id,))
+            stored_pin = cur.fetchone()[0]
+
+            if current_pin != stored_pin:
+                flash("Current PIN is incorrect", "error")
+                return redirect(url_for("profile"))
+
+            if new_pin != confirm_pin:
+                flash("New PINs do not match", "error")
+                return redirect(url_for("profile"))
+
+            if len(new_pin) != 4 or not new_pin.isdigit():
+                flash("PIN must be 4 digits", "error")
+                return redirect(url_for("profile"))
+
+            cur.execute(
+                "UPDATE users SET pin = %s, password = %s WHERE id = %s",
+                (new_pin, new_pin, current_user.id)
+            )
+            conn.commit()
+
+            flash("PIN updated successfully", "success")
+            return redirect(url_for("profile"))
+
+        # ================= UPDATE RSN (YOUR ORIGINAL LOGIC) =================
+        if "rsn" in request.form:
+
+            new_rsn = request.form["rsn"]
+
+            cur.execute("SELECT id FROM users WHERE rsn = %s AND id != %s", (new_rsn, current_user.id))
+            if cur.fetchone():
+                flash("RSN already in use", "error")
+                return redirect(url_for("profile"))
+
+            cur.execute("UPDATE users SET rsn = %s WHERE id = %s", (new_rsn, current_user.id))
+            conn.commit()
+
+            flash("RSN updated", "success")
             return redirect(url_for("profile"))
 
         cur.execute("UPDATE users SET rsn = %s WHERE id = %s", (new_rsn, current_user.id))

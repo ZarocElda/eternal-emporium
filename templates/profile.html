@@ -28,6 +28,33 @@
                 <button type="submit">Update</button>
             </form>
 
+            <hr style="margin:25px 0;">
+
+            <h3>Change PIN</h3>
+
+            <form method="post">
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; opacity:.7;">Current PIN</label>
+                    <input name="current_pin" required>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; opacity:.7;">New PIN</label>
+                    <input name="new_pin" required>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; opacity:.7;">Confirm New PIN</label>
+                    <input name="confirm_pin" required>
+                </div>
+
+                <button style="margin-top:10px;">
+                    Update PIN
+                </button>
+
+            </form>
+
             <p style="margin-top:15px;"><strong>Points:</strong></p>
             <p class="points">
                 💰 {{ "{:,}".format(points) }}
