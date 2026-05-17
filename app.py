@@ -408,6 +408,39 @@ def admin():
             flash("You cannot modify yourself", "error")
             return redirect(url_for("admin"))
 
+# ================= BULK APPLY =================
+        if request.form.get("bulk_apply"):
+
+            selected_users = request.form.getlist("selected_users")
+            amount = request.form.get("bulk_amount")
+
+            if not selected_users or not amount:
+                flash("Select users and enter an amount", "error")
+                return redirect(url_for("admin"))
+
+            try:
+                amount = int(amount)
+            except:
+                flash("Invalid amount", "error")
+                return redirect(url_for("admin"))
+
+            for user_id in selected_users:
+
+                cur.execute(
+                    "UPDATE users SET points = points + %s WHERE id = %s",
+                    (amount, user_id)
+                )
+
+                cur.execute("""
+                    INSERT INTO point_logs (user_id, amount, admin_id)
+                    VALUES (%s, %s, %s)
+                """, (user_id, amount, current_user.id))
+
+            conn.commit()
+
+            flash(f"Updated {len(selected_users)} users", "success")
+            return redirect(url_for("admin"))
+
         # POINTS
         if amount not in (None, ""):
             try:
