@@ -401,7 +401,7 @@ def admin():
 # ================= BULK APPLY =================
         if request.form.get("bulk_apply"):
 
-            selected_users = request.form.getlist("selected_users")
+            selected_users = request.form.getlist("selected_users[]")
             bulk_amount = request.form.get("bulk_amount")
 
             if not selected_users or not amount:
