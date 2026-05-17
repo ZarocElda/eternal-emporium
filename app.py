@@ -77,7 +77,7 @@ def register():
 
         try:
             cur.execute(
-                "INSERT INTO users (username, password, role) VALUES (%s, %s, %s, %s)",
+                "INSERT INTO users (username, password, role, pin) VALUES (%s, %s, %s, %s)",
                 (username, hashed_pin, "user", pin)
             )
             conn.commit()
@@ -478,15 +478,9 @@ def admin():
 
         # SET PIN
         if action == "set_pin":
-            if current_user.role != "owner":
-                flash("Only owners can set PINs", "error")
-                return redirect(url_for("admin"))
-
-            hashed_pin = generate_password_hash(new_pin)
-
             cur.execute(
                 "UPDATE users SET pin = %s WHERE id = %s",
-                (hashed_pin, user_id)
+                (new_pin, user_id)
             )
 
         # RESET PIN

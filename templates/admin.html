@@ -43,13 +43,11 @@
     <th>Role</th>
     <th>PIN</th>
     <th>Joined</th>
+    <th></th>
 </tr>
 
 {% for u in users %}
-<tr 
-    onclick="openUserModal('{{ u[0] }}', '{{ u[1]|escape }}', '{{ u[2]|escape }}', '{{ u[3] }}', '{{ u[4] }}')"
-    style="cursor:pointer; border-bottom:1px solid #1e293b;"
->
+<tr style="border-bottom:1px solid #1e293b;">
 
     <td>
         <input type="checkbox" class="bulk-user" value="{{ u[0] }}">
@@ -90,10 +88,23 @@
     </td>
 
     <td style="color:#facc15;">
-        {{ "Set" if u[5] else "None" }}
+        {{ u[5] if u[5] else "None" }}
     </td>
 
     <td>{{ u[6] }}</td>
+
+    <td>
+        <button onclick="openUserModal('{{ u[0] }}', '{{ u[1]|escape }}')" style="
+            background:#334155;
+            border:none;
+            color:white;
+            padding:6px 10px;
+            border-radius:6px;
+            cursor:pointer;
+        ">
+            ⋯
+        </button>
+    </td>
 </tr>
 {% endfor %}
 
@@ -126,18 +137,25 @@
 
     <!-- X BUTTON -->
 
-    <div style="display:flex; justify-content:space-between; align-items:right;">
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:15px;
+    ">
+
         <h3 id="modalName" style="margin:0;"></h3>
 
         <button onclick="closeUserModal()" style="
             background:none;
             border:none;
-            color:white;
-            font-size:22px;
+            color:#94a3b8;
+            font-size:20px;
             cursor:pointer;
         ">
-            ✕
+            ×
         </button>
+
     </div>
 
     <form method="post">
@@ -147,7 +165,7 @@
         <!-- POINTS -->
         <div style="margin-bottom:15px;">
             <label style="font-size:12px; opacity:.7;">Adjust Points</label>
-            <input name="amount" placeholder="+ / - amount" style="width:100%;">
+            <input name="amount" placeholder="+ / - amount" style="width:100%; max-width:300px;">
         </div>
 
         <button style="width:100%; margin-bottom:15px;">Apply</button>
