@@ -33,19 +33,35 @@
     padding-right:10px;
 ">
 
-<div class="grid" id="userGrid">
+<table style="width:100%; margin-top:20px; border-collapse:collapse;">
+
+<tr style="text-align:left; border-bottom:1px solid #334155;">
+    <th></th>
+    <th>Username</th>
+    <th>RSN</th>
+    <th>Points</th>
+    <th>Role</th>
+</tr>
 
 {% for u in users %}
-<div class="card user-card" style="width:260px;">
-<div style="margin-bottom:10px;">
-    <input 
-    type="checkbox" 
-    class="bulk-user"
-    name="selected_users"
-    value="{{ u[0] }}"
-    style="width:18px; height:18px; accent-color:#3b82f6;"
+<tr 
+    onclick="openUserModal('{{ u[0] }}', '{{ u[1] }}', '{{ u[2] }}', '{{ u[3] }}', '{{ u[4] }}')"
+    style="cursor:pointer; border-bottom:1px solid #1e293b;"
 >
-</div>
+
+    <td>
+        <input type="checkbox" class="bulk-user" value="{{ u[0] }}">
+    </td>
+
+    <td>{{ u[1] }}</td>
+    <td>{{ u[2] or "-" }}</td>
+    <td style="color:#3b82f6;">{{ u[3] }}</td>
+    <td>{{ u[4] }}</td>
+
+</tr>
+{% endfor %}
+
+</table>
 
     <!-- USER NAME -->
     <h3 class="username" style="margin-bottom:5px;">
@@ -156,6 +172,72 @@
         </form>
     </div>
 
+    <!-- ================= USER EDIT MODAL ================= -->
+<div id="userModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+">
+
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:400px;
+    ">
+
+        <h3 id="modalName"></h3>
+
+        <form method="post">
+
+            <input type="hidden" name="user_id" id="modalUserId">
+
+            <!-- POINTS -->
+            <input name="amount" placeholder="+ / - points">
+
+            <button style="margin-top:10px;">Update Points</button>
+
+            {% if current_user.role == "owner" %}
+            <hr style="margin:15px 0;">
+
+            <!-- ROLE -->
+            <select name="role">
+                <option value="">Change Role</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+
+            <button style="margin-top:6px;">Update Role</button>
+
+            <!-- PIN -->
+            <input name="new_pin" placeholder="Set PIN">
+            <button style="margin-top:6px;">Set PIN</button>
+
+            <button name="action" value="reset_pin" style="margin-top:6px;">
+                Reset PIN
+            </button>
+
+            <button name="action" value="delete" style="background:red; margin-top:6px;">
+                Delete User
+            </button>
+
+            {% endif %}
+
+        </form>
+
+        <button onclick="closeUserModal()" style="margin-top:15px;">Close</button>
+
+    </div>
+</div>
+
     <!-- DELETE BUTTON (MODAL TRIGGER) -->
     <button 
         type="button"
@@ -217,12 +299,14 @@
 <script>
 document.getElementById("search").addEventListener("keyup", function() {
     let value = this.value.toLowerCase();
-    let cards = document.querySelectorAll(".user-card");
+    let rows = document.querySelectorAll("table tr");
 
-    cards.forEach(card => {
-        let name = card.querySelector(".username").innerText.toLowerCase();
-        card.style.display = name.includes(value) ? "block" : "none";
-    });
+rows.forEach((row, index) => {
+    if (index === 0) return; // skip header
+
+    let text = row.innerText.toLowerCase();
+    row.style.display = text.includes(value) ? "" : "none";
+});
 });
 </script>
 
@@ -294,6 +378,18 @@ function applyBulk() {
 
     document.body.appendChild(form);
     form.submit();
+}
+</script>
+
+<script>
+function openUserModal(id, username, rsn, points, role) {
+    document.getElementById("userModal").style.display = "flex";
+    document.getElementById("modalUserId").value = id;
+    document.getElementById("modalName").innerText = username;
+}
+
+function closeUserModal() {
+    document.getElementById("userModal").style.display = "none";
 }
 </script>
 
