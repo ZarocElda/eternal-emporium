@@ -436,7 +436,7 @@ def admin():
             return redirect(url_for("admin"))
         
         user_id = request.form.get("user_id")
-        single_amount = request.form.get("amount")
+        amount = request.form.get("amount")
         role = request.form.get("role")
         action = request.form.get("action")
         new_pin = request.form.get("new_pin")
@@ -451,13 +451,13 @@ def admin():
                 single_amount = int(single_amount)
                 cur.execute(
                     "UPDATE users SET points = points + %s WHERE id = %s",
-                    (single_amount, user_id)
+                    (amount, user_id)
                 )
 
                 cur.execute("""
                     INSERT INTO point_logs (user_id, amount, admin_id)
                     VALUES (%s, %s, %s)
-                """, (user_id, single_amount, current_user.id))
+                """, (user_id, amount, current_user.id))
 
             except:
                 flash("Invalid amount", "error")
