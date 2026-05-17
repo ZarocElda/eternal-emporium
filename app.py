@@ -403,7 +403,8 @@ def admin():
             flash("Invalid request", "error")
             return redirect(url_for("admin"))
 
-        if int(user_id) == int(current_user.id):
+        # ❌ BLOCK self edits ONLY for non-admins
+        if int(user_id) == int(current_user.id) and current_user.role not in ["admin", "owner"]:
             flash("You cannot modify yourself", "error")
             return redirect(url_for("admin"))
 
