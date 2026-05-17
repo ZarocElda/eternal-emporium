@@ -45,7 +45,7 @@
 
 {% for u in users %}
 <tr 
-    onclick="openUserModal('{{ u[0] }}', '{{ u[1] }}', '{{ u[2] }}', '{{ u[3] }}', '{{ u[4] }}')"
+    onclick="openUserModal('{{ u[0] }}', '{{ u[1]|escape }}', '{{ u[2]|escape }}', '{{ u[3] }}', '{{ u[4] }}')"
     style="cursor:pointer; border-bottom:1px solid #1e293b;"
 >
 
@@ -63,35 +63,6 @@
 
 </table>
 
-    <!-- USER NAME -->
-    <h3 class="username" style="margin-bottom:5px;">
-        {{ u[1] }}
-    </h3>
-
-    <!-- INFO -->
-    <p><strong>RSN:</strong> {{ u[2] or "-" }}</p>
-
-    <p><strong>Points:</strong>
-        <span style="color:#3b82f6;font-weight:600;">
-            {{ u[3] }}
-        </span>
-    </p>
-
-    <!-- ROLE BADGE -->
-    <p><strong>Role:</strong>
-        <span class="role-badge {{ u[4] }}">
-            {{ u[4] }}
-        </span>
-    </p>
-
-    {% if current_user.role == "owner" %}
-    <p style="font-size:12px; opacity:0.6;">
-        PIN:
-        <span style="color:#facc15; font-weight:600;">
-            {{ u[5] if u[5] is not none else "None" }}
-        </span>
-    </p>
-    {% endif %}
     <!-- ================= TICKET CONTROL ================= -->
     <div style="margin-top:15px; text-align:center;">
 
