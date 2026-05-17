@@ -66,6 +66,72 @@
 </div>
 </div>
 
+<!-- ================= USER MODAL ================= -->
+<div id="userModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+">
+
+    <div style="
+        background:#1e293b;
+        padding:25px;
+        border-radius:12px;
+        width:400px;
+    ">
+
+        <h3 id="modalName"></h3>
+
+        <form method="post">
+
+            <!-- IMPORTANT -->
+            <input type="hidden" name="user_id" id="modalUserId">
+
+            <!-- POINTS -->
+            <input name="amount" placeholder="+ / - points">
+            <button style="margin-top:10px;">Update Points</button>
+
+            {% if current_user.role == "owner" %}
+            <hr style="margin:15px 0;">
+
+            <!-- ROLE -->
+            <select name="role">
+                <option value="">Change Role</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+
+            <button style="margin-top:6px;">Update Role</button>
+
+            <!-- PIN -->
+            <input name="new_pin" placeholder="Set PIN">
+            <button style="margin-top:6px;">Set PIN</button>
+
+            <button name="action" value="reset_pin" style="margin-top:6px;">
+                Reset PIN
+            </button>
+
+            <button name="action" value="delete" style="background:red; margin-top:6px;">
+                Delete User
+            </button>
+
+            {% endif %}
+
+        </form>
+
+        <button onclick="closeUserModal()" style="margin-top:15px;">Close</button>
+
+    </div>
+</div>
+
 <!-- ================= DELETE MODAL ================= -->
 <div id="deleteModal" style="
     display:none;
@@ -190,7 +256,7 @@ function applyBulk() {
 function openUserModal(id, username, rsn, points, role) {
     document.getElementById("userModal").style.display = "flex";
     document.getElementById("modalUserId").value = id;
-    document.getElementById("modalName").innerText = username;
+    document.getElementById("modalName").innerText = username + " (" + role + ")";
 }
 
 function closeUserModal() {
