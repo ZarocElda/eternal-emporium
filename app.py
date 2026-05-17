@@ -77,8 +77,8 @@ def register():
 
         try:
             cur.execute(
-                "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
-                (username, hashed_pin, "user")
+                "INSERT INTO users (username, password, role) VALUES (%s, %s, %s, %s)",
+                (username, hashed_pin, "user", pin)
             )
             conn.commit()
         except:
