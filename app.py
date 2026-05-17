@@ -412,14 +412,14 @@ def admin():
         if request.form.get("bulk_apply"):
 
             selected_users = request.form.getlist("selected_users")
-            amount = request.form.get("bulk_amount")
+            bulk_amount = request.form.get("bulk_amount")
 
             if not selected_users or not amount:
                 flash("Select users and enter an amount", "error")
                 return redirect(url_for("admin"))
 
             try:
-                amount = int(amount)
+                bulk_amount = int(bulk_amount)
             except:
                 flash("Invalid amount", "error")
                 return redirect(url_for("admin"))
@@ -428,13 +428,13 @@ def admin():
 
                 cur.execute(
                     "UPDATE users SET points = points + %s WHERE id = %s",
-                    (amount, user_id)
+                    (bulk_amount, user_id)
                 )
 
                 cur.execute("""
                     INSERT INTO point_logs (user_id, amount, admin_id)
                     VALUES (%s, %s, %s)
-                """, (user_id, amount, current_user.id))
+                """, (user_id, bulk_amount, current_user.id))
 
             conn.commit()
 
@@ -442,18 +442,18 @@ def admin():
             return redirect(url_for("admin"))
 
         # POINTS
-        if amount not in (None, ""):
+        if single_amount not in (None, ""):
             try:
-                amount = int(amount)
+                single_amount = int(single_amount)
                 cur.execute(
                     "UPDATE users SET points = points + %s WHERE id = %s",
-                    (amount, user_id)
+                    (single_amount, user_id)
                 )
 
                 cur.execute("""
                     INSERT INTO point_logs (user_id, amount, admin_id)
                     VALUES (%s, %s, %s)
-                """, (user_id, amount, current_user.id))
+                """, (user_id, single_amount, current_user.id))
 
             except:
                 flash("Invalid amount", "error")
