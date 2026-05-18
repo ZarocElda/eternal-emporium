@@ -7,13 +7,17 @@
         body {
             margin: 0;
             font-family: "Segoe UI", Arial;
-            background: radial-gradient(circle at top, #1e293b, #020617);
+            background: radial-gradient(circle at 50% 20%, #1e293b, #020617 70%);
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(59,130,246,0.15), transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(59,130,246,0.08), transparent 40%);
             color: #e2e8f0;
         }
 
         /* NAVBAR */
         .nav {
-            background: #020617;
+            background: rgba(2,6,23,0.85);
+            backdrop-filter: blur(6px);       
             padding: 15px 30px;
             display: flex;
             align-items: center;
@@ -88,7 +92,8 @@
 
         /* CARD */
         .card {
-            background: #1e293b;
+            background: rgba(30,41,59,0.85);
+            backdrop-filter: blur(6px);
             border-radius: 12px;
             padding: 15px;
             flex: 1 1 260px;
