@@ -50,20 +50,21 @@ def send_discord_order_notification(username, rsn, item_name, quantity, total_co
 
     embed = {
         "title": "🛒 New Store Order",
+        "description": "A new purchase has been placed in the Eternal Emporium.",
         "color": 3447003,
         "fields": [
             {
-                "name": "Customer",
+                "name": "👤 Customer",
                 "value": username,
-                "inline": True
+                "inline": False
             },
             {
-                "name": "RSN",
+                "name": "🎮 RSN",
                 "value": rsn or "Not Set",
-                "inline": True
+                "inline": False
             },
             {
-                "name": "Item",
+                "name": "📦 Item",
                 "value": item_name,
                 "inline": False
             },
@@ -79,7 +80,7 @@ def send_discord_order_notification(username, rsn, item_name, quantity, total_co
             }
         ],
         "footer": {
-            "text": "Eternal Emporium"
+            "text": "Eternal Emporium • Store Order"
         }
     }
 
