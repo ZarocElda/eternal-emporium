@@ -48,6 +48,9 @@ def send_discord_order_notification(username, rsn, item_name, quantity, total_co
             if discord_id
         )
 
+    eastern = pytz.timezone("US/Eastern")
+    order_time = datetime.now(eastern).strftime("%m/%d/%y, %I:%M %p")
+
     embed = {
         "title": "📦 New Store Purchase",
         "description": (
@@ -57,7 +60,10 @@ def send_discord_order_notification(username, rsn, item_name, quantity, total_co
             f"🔢 **Quantity:** {quantity}\n\n"
             f"💰 **Cost:** {total_cost:,} points"
         ),
-        "color": 15158332
+        "color": 15158332,
+        "footer": {
+            "text": order_time
+        }
     }
 
     payload = {
