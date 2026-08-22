@@ -825,15 +825,24 @@ def inject_user_data():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT points FROM users WHERE id = %s", (current_user.id,))
+        cur.execute(
+            "SELECT points, profile_picture FROM users WHERE id = %s",
+            (current_user.id,)
+        )
         result = cur.fetchone()
 
         cur.close()
         conn.close()
 
-        return dict(user_points=result[0] if result and result[0] is not None else 0)
+        return dict(
+            user_points=result[0] if result and result[0] is not None else 0,
+            user_profile_picture=result[1] if result else None
+        )
 
-    return dict(user_points=0)
+    return dict(
+        user_points=0,
+        user_profile_picture=None
+    )
 
 # ================= STORE ORDERS LOG =================
 @app.route("/store_orders", methods=["GET", "POST"])
