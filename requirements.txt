@@ -5,3 +5,4 @@ flask-login
 werkzeug
 gunicorn
 pytz
+requests
