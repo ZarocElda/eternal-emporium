@@ -711,8 +711,7 @@
             </div>
 
 
-            <div class="card" style="margin-top:20px;">
-
+            <div class="card saved-themes-card" style="margin-top:20px;">
                 <h3>Saved Themes</h3>
 
         <form method="post" style="margin:15px 0 20px 0;">
@@ -732,16 +731,11 @@
 
         {% if themes %}
 
+        <div class="saved-themes-grid">
+
             {% for theme in themes %}
 
-                <div style="
-                    padding:15px 0;
-                    border-bottom:1px solid #334155;
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                    gap:15px;
-                ">
+                <div class="saved-theme-item">
 
                     <div>
 
@@ -826,20 +820,7 @@
 
                     </div>
 
-                                        <div style="
-                                            display:flex;
-                                            align-items:center;
-                                            gap:10px;
-                                        ">
-
-                                            <!-- COLOR PREVIEW -->
-                                            <div style="
-                        display:flex;
-                        align-items:center;
-                        gap:10px;
-                        flex-wrap:wrap;
-                        justify-content:flex-end;
-                    ">
+                                        <div class="saved-theme-actions">
 
                         <!-- COLOR PREVIEW -->
                         <div style="display:flex; gap:5px;">
@@ -962,6 +943,8 @@
                 </div>
 
             {% endfor %}
+     
+        </div>
 
         {% else %}
 
@@ -990,6 +973,51 @@
         box-sizing: border-box;
     }
 
+    .saved-themes-card {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
+    }
+
+    .saved-themes-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .saved-theme-item {
+        padding: 18px;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.35);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    .saved-theme-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid #334155;
+    }
+
+    .saved-theme-actions form {
+        margin: 0;
+    }
+
+    .saved-theme-actions button {
+        white-space: nowrap;
+    }
+
     .theme-editor-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1005,10 +1033,18 @@
         .theme-editor-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .saved-themes-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 800px) {
         .theme-editor-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .saved-themes-grid {
             grid-template-columns: 1fr;
         }
     }
