@@ -10,30 +10,32 @@
 <div class="grid">
 
 {% if is_owner %}
-<div class="card" style="width:260px;">
+<div class="card" style="width:320px;">
     <h3>Create Item</h3>
 
-    {% if catalog_items %}
+    <form method="post" enctype="multipart/form-data">
 
-    <form method="post">
-
-        <label style="font-size:12px; opacity:.7;">
-            Select Item
+        {% if catalog_items %}
+        <label style="font-size:12px; opacity:.7; display:block; margin-bottom:5px;">
+            Select Saved Item
         </label>
 
         <select
             id="catalogSelect"
             name="catalog_id"
-            required
             onchange="loadCatalogItem()"
             style="
+                display:block;
                 width:100%;
-                padding:12px;
-                margin:8px 0 16px 0;
+                box-sizing:border-box;
+                min-height:42px;
+                padding:10px 12px;
+                margin:0 0 15px 0;
                 border-radius:8px;
                 border:1px solid #2e3b55;
                 background:#0b162b;
                 color:white;
+                font-size:14px;
             "
         >
             <option value="">Choose an item...</option>
@@ -47,13 +49,32 @@
                 {{ item[1] }}
             </option>
             {% endfor %}
-
         </select>
 
+        <div style="
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin:5px 0 15px 0;
+            opacity:.5;
+            font-size:12px;
+        ">
+            <div style="height:1px; background:#475569; flex:1;"></div>
+            OR ADD MANUALLY
+            <div style="height:1px; background:#475569; flex:1;"></div>
+        </div>
+        {% endif %}
+
+        <label style="font-size:12px; opacity:.7;">
+            Item Name
+        </label>
+
         <input
-            type="hidden"
             id="catalogName"
             name="name"
+            placeholder="Item Name"
+            required
+            style="width:100%; box-sizing:border-box;"
         >
 
         <label style="font-size:12px; opacity:.7;">
@@ -65,7 +86,9 @@
             name="cost"
             type="number"
             placeholder="Cost"
+            min="0"
             required
+            style="width:100%; box-sizing:border-box;"
         >
 
         <label style="font-size:12px; opacity:.7;">
@@ -78,29 +101,27 @@
             placeholder="Quantity"
             min="1"
             required
+            style="width:100%; box-sizing:border-box;"
         >
 
-        <button name="create_item">
+        <label style="font-size:12px; opacity:.7;">
+            Image
+        </label>
+
+        <input
+            type="file"
+            name="image_file"
+            accept="image/*"
+            style="width:100%; box-sizing:border-box;"
+        >
+
+        <button name="create_item" style="width:100%; margin-top:10px;">
             Add Item
         </button>
 
     </form>
-
-    {% else %}
-
-    <p style="opacity:.6;">
-        No items have been added to the Store Catalog yet.
-    </p>
-
-    <a href="/profile">
-        <button type="button">
-            Manage Catalog
-        </button>
-    </a>
-
-    {% endif %}
-
 </div>
+
 {% endif %}
 
 {% for item in items %}

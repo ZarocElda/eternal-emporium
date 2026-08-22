@@ -400,35 +400,44 @@ def store():
 
                 image_filename = f"/static/uploads/{filename}"
 
-                # ================= CREATE ITEM =================
+                        # ================= CREATE ITEM =================
         if "create_item" in request.form and current_user.role == "owner":
+
             catalog_id = request.form.get("catalog_id")
+            name = request.form.get("name", "").strip()
             cost = int(request.form["cost"])
             quantity = int(request.form["quantity"])
 
-            if not catalog_id:
-                flash("Please select an item", "error")
+            # If owner selected a saved catalog item
+            if catalog_id:
+
+                cur.execute("""
+                    SELECT name, image
+                    FROM item_catalog
+                    WHERE id = %s
+                """, (catalog_id,))
+
+                catalog_item = cur.fetchone()
+
+                if not catalog_item:
+                    flash("Catalog item not found", "error")
+                    return redirect(url_for("store"))
+
+                name, catalog_image = catalog_item
+
+                # Use catalog image unless owner uploaded a new one
+                if not image_filename:
+                    image_filename = catalog_image
+
+            # If adding manually, make sure a name was entered
+            if not name:
+                flash("Item name is required", "error")
                 return redirect(url_for("store"))
-
-            # Get the item's saved name and image from the catalog
-            cur.execute("""
-                SELECT name, image
-                FROM item_catalog
-                WHERE id = %s
-            """, (catalog_id,))
-
-            catalog_item = cur.fetchone()
-
-            if not catalog_item:
-                flash("Catalog item not found", "error")
-                return redirect(url_for("store"))
-
-            name, catalog_image = catalog_item
 
             cur.execute("""
                 INSERT INTO items (name, cost, quantity, image)
                 VALUES (%s, %s, %s, %s)
-            """, (name, cost, quantity, catalog_image))
+            """, (name, cost, quantity, image_filename))
 
             conn.commit()
 
