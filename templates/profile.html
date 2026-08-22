@@ -226,27 +226,32 @@
 
         {% if role == "owner" %}
 
-<!-- OWNER STORE CATALOG -->
-<div class="card" style="max-width:none;">
+<!-- ADD STORE CATALOG ITEM -->
+<div class="card">
     <h3>Store Item Catalog</h3>
 
     <p style="opacity:0.6; font-size:13px;">
-        Manage the items available in the Store dropdown.
+        Add items that will be available in the Store dropdown.
     </p>
 
-    <!-- ADD CATALOG ITEM -->
     <form method="post" enctype="multipart/form-data">
 
         <input type="hidden" name="catalog_action" value="add">
 
-        <label style="font-size:12px; opacity:.7;">Item Name</label>
+        <label style="font-size:12px; opacity:.7;">
+            Item Name
+        </label>
+
         <input
             name="catalog_name"
             placeholder="Example: Blue Party Hat"
             required
         >
 
-        <label style="font-size:12px; opacity:.7;">Default Cost</label>
+        <label style="font-size:12px; opacity:.7;">
+            Default Cost
+        </label>
+
         <input
             type="number"
             name="catalog_cost"
@@ -255,7 +260,10 @@
             required
         >
 
-        <label style="font-size:12px; opacity:.7;">Item Image</label>
+        <label style="font-size:12px; opacity:.7;">
+            Item Image
+        </label>
+
         <input
             type="file"
             name="catalog_image"
@@ -267,18 +275,20 @@
         </button>
 
     </form>
+</div>
+
+
+<!-- CURRENT STORE CATALOG -->
+<div class="card">
+
+    <h3>Current Catalog</h3>
+
+    <p style="opacity:0.6; font-size:13px;">
+        Items currently available for use in the Store.
+    </p>
 
     {% if catalog_items %}
 
-        <hr style="
-            border:none;
-            border-top:1px solid #334155;
-            margin:20px 0;
-        ">
-
-        <h4>Current Catalog</h4>
-
-        <!-- SCROLLABLE CATALOG LIST -->
         <div style="
             max-height:380px;
             overflow-y:auto;
@@ -286,80 +296,89 @@
             padding-right:8px;
         ">
 
-        {% for item in catalog_items %}
-
-            <div style="
-                display:flex;
-                align-items:center;
-                justify-content:space-between;
-                gap:12px;
-                padding:10px 0;
-                border-bottom:1px solid #334155;
-            ">
+            {% for item in catalog_items %}
 
                 <div style="
                     display:flex;
                     align-items:center;
+                    justify-content:space-between;
                     gap:12px;
-                    min-width:0;
+                    padding:10px 0;
+                    border-bottom:1px solid #334155;
                 ">
 
-                    {% if item.image %}
-                        <img
-                            src="{{ item.image }}"
-                            alt="{{ item.name }}"
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        gap:12px;
+                        min-width:0;
+                    ">
+
+                        {% if item.image %}
+                            <img
+                                src="{{ item.image }}"
+                                alt="{{ item.name }}"
+                                style="
+                                    width:48px;
+                                    height:48px;
+                                    object-fit:contain;
+                                    border-radius:8px;
+                                    background:#0f172a;
+                                    border:1px solid #334155;
+                                    flex-shrink:0;
+                                "
+                            >
+                        {% endif %}
+
+                        <div>
+                            <strong>{{ item.name }}</strong><br>
+
+                            <span style="
+                                font-size:12px;
+                                opacity:.6;
+                            ">
+                                {{ item.default_cost }} pts
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <form method="post" style="margin:0;">
+
+                        <input
+                            type="hidden"
+                            name="catalog_action"
+                            value="remove"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="catalog_id"
+                            value="{{ item.id }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="delete"
                             style="
-                                width:48px;
-                                height:48px;
-                                object-fit:contain;
-                                border-radius:8px;
-                                background:#0f172a;
-                                border:1px solid #334155;
-                                flex-shrink:0;
+                                width:auto;
+                                padding:6px 12px;
                             "
                         >
-                    {% endif %}
+                            Remove
+                        </button>
 
-                    <div>
-                        <strong>{{ item.name }}</strong><br>
-
-                        <span style="font-size:12px; opacity:.6;">
-                            {{ item.default_cost }} pts
-                        </span>
-                    </div>
+                    </form>
 
                 </div>
 
-                <form method="post" style="margin:0;">
-                    <input
-                        type="hidden"
-                        name="catalog_action"
-                        value="remove"
-                    >
+            {% endfor %}
 
-                    <input
-                        type="hidden"
-                        name="catalog_id"
-                        value="{{ item.id }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="delete"
-                        style="width:auto; padding:6px 12px;"
-                    >
-                        Remove
-                    </button>
-                </form>
-
-            </div>
-
-        {% endfor %}
-    </div>
+        </div>
 
     {% else %}
 
-        <p style="opacity:.6; margin-top:20px;">
+        <p style="opacity:.6;">
             No catalog items yet.
         </p>
 
