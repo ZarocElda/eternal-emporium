@@ -63,6 +63,18 @@ def ensure_profile_picture_column():
     cur.close()
     conn.close()
 
+def ensure_profile_picture_data_column():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS profile_picture_data BYTEA
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 class User(UserMixin):
     def __init__(self, id, username, password, role):
@@ -911,6 +923,7 @@ def logout():
 
 ensure_item_catalog_table()
 ensure_profile_picture_column()
+ensure_profile_picture_data_column()
 
 if __name__ == "__main__":
     app.run(debug=True)
