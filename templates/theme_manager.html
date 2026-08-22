@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<div style="width:100%; max-width:1500px; margin:0 auto;">
+<div class="theme-manager-page">
 
     <div style="margin-bottom:30px;">
         <h2>Website Theme Manager</h2>
@@ -11,7 +11,7 @@
         </p>
     </div>
 
-    <div class="card" style="padding:24px;">
+    <div class="card theme-manager-card" style="padding:24px;">
 
         <h3 id="themeEditorHeading">🎨 Create New Theme</h3>
 
@@ -976,6 +976,20 @@
 </div>
 
 <style>
+
+    .theme-manager-page {
+        width: 100%;
+        max-width: 1500px;
+        margin: 0 auto;
+        box-sizing: border-box;
+    }
+    
+    .theme-manager-card {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
+    }
+
     .theme-editor-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
