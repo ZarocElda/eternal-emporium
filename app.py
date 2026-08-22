@@ -36,6 +36,19 @@ def ensure_item_catalog_table():
     conn = get_db_connection()
     cur = conn.cursor()
 
+def ensure_profile_picture_column():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS profile_picture TEXT
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS item_catalog (
             id SERIAL PRIMARY KEY,
@@ -844,6 +857,7 @@ def logout():
     return redirect(url_for("login"))
 
 ensure_item_catalog_table()
+ensure_profile_picture_column()
 
 if __name__ == "__main__":
     app.run(debug=True)
