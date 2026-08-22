@@ -489,6 +489,13 @@
                 Admin Ticket Updates
                 </a>
             {% endif %}
+
+            {% if current_user.role == "owner" %}
+                <a href="{{ url_for('theme_manager') }}"
+                class="{% if request.path.startswith('/theme_manager') %}active-nav{% endif %}">
+                Theme Manager
+                </a>
+            {% endif %}
         </div>
 
         <div style="display:flex; align-items:center; gap:15px;">
