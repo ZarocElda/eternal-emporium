@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<div style="max-width:1100px; margin:0 auto;">
+<div style="width:100%; max-width:1500px; margin:0 auto;">
 
     <div style="margin-bottom:30px;">
         <h2>Website Theme Manager</h2>
@@ -11,7 +11,7 @@
         </p>
     </div>
 
-    <div class="card">
+    <div class="card" style="padding:24px;">
 
         <h3 id="themeEditorHeading">🎨 Create New Theme</h3>
 
@@ -187,7 +187,7 @@
 
         <div style="
             display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns:repeat(2, minmax(0, 1fr));
             gap:18px;
             margin-top:20px;
         ">
@@ -199,7 +199,13 @@
                     type="color"
                     name="primary_color"
                     value="#3b82f6"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -210,7 +216,13 @@
                     type="color"
                     name="accent_color"
                     value="#22c55e"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -221,7 +233,13 @@
                     type="color"
                     name="page_background"
                     value="#0f172a"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -232,7 +250,13 @@
                     type="color"
                     name="card_background"
                     value="#1e293b"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -243,7 +267,13 @@
                     type="color"
                     name="header_background"
                     value="#020617"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -254,7 +284,13 @@
                     type="color"
                     name="text_color"
                     value="#e2e8f0"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -265,7 +301,13 @@
                     type="color"
                     name="muted_text_color"
                     value="#94a3b8"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -276,7 +318,13 @@
                     type="color"
                     name="button_color"
                     value="#3b82f6"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
@@ -287,15 +335,27 @@
                     type="color"
                     name="border_color"
                     value="#334155"
-                    style="width:100%; height:45px; cursor:pointer;"
+                    style="
+                        width:100%;
+                        height:38px;
+                        padding:2px;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                    "
                 >
             </div>
 
         </div>
 
-    </div>    
+</div>
 
-    <!-- ================= THEME IMAGES ================= -->
+<!-- CLOSE MIDDLE COLUMN -->
+</div>
+
+<!-- OPEN THIRD COLUMN -->
+<div class="theme-editor-column">
+
+<!-- ================= THEME IMAGES ================= -->
 
     <div style="
         padding:20px;
@@ -326,6 +386,12 @@
                 type="file"
                 name="logo_image"
                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:8px;
+                    font-size:12px;
+                "
             >
 
             <div
@@ -385,6 +451,12 @@
                 type="file"
                 name="banner_image"
                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:8px;
+                    font-size:12px;
+                "
             >
 
             <div
@@ -444,6 +516,12 @@
                 type="file"
                 name="background_image"
                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:8px;
+                    font-size:12px;
+                "
             >
 
             <div
@@ -506,8 +584,8 @@
 
         <div style="
             display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-            gap:20px;
+            grid-template-columns:1fr;
+            gap:15px;
             margin-top:20px;
         ">
 
@@ -900,8 +978,8 @@
 <style>
     .theme-editor-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 20px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
         align-items: start;
     }
 
@@ -909,7 +987,13 @@
         min-width: 0;
     }
 
-    @media (max-width: 850px) {
+    @media (max-width: 1200px) {
+        .theme-editor-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 800px) {
         .theme-editor-grid {
             grid-template-columns: 1fr;
         }
