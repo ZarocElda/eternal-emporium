@@ -215,6 +215,45 @@ def profile():
 
     if request.method == "POST":
 
+    # ================= PROFILE PICTURE =================
+        if "profile_picture" in request.files:
+           file = request.files["profile_picture"]
+
+        if file and file.filename != "":
+            from werkzeug.utils import secure_filename
+            import uuid
+
+            filename = secure_filename(file.filename)
+            extension = os.path.splitext(filename)[1].lower()
+
+            allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+
+            if extension not in allowed_extensions:
+                flash("Profile picture must be JPG, PNG, or WEBP", "error")
+                return redirect(url_for("profile"))
+
+            os.makedirs("static/uploads/profiles", exist_ok=True)
+
+            unique_filename = f"user_{current_user.id}_{uuid.uuid4().hex}{extension}"
+            filepath = os.path.join(
+                "static/uploads/profiles",
+                unique_filename
+            )
+
+            file.save(filepath)
+
+            profile_picture = f"/static/uploads/profiles/{unique_filename}"
+
+            cur.execute(
+                "UPDATE users SET profile_picture = %s WHERE id = %s",
+                (profile_picture, current_user.id)
+            )
+
+            conn.commit()
+
+            flash("Profile picture updated", "success")
+            return redirect(url_for("profile"))
+
         # ================= OWNER ITEM CATALOG =================
         if "catalog_action" in request.form:
 
