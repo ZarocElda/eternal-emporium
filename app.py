@@ -31,6 +31,25 @@ login_manager.login_view = "login"
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
+ensure_item_catalog_table()
+
+def ensure_item_catalog_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS item_catalog (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            default_cost INTEGER NOT NULL DEFAULT 0,
+            image TEXT
+        )
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
 
 class User(UserMixin):
     def __init__(self, id, username, password, role):
@@ -252,7 +271,7 @@ def profile():
     """, (current_user.id,))
     last_purchase = cur.fetchone()
 
-    # RECENT PURCHASES
+        # RECENT PURCHASES
     cur.execute("""
         SELECT item_name, total_cost
         FROM purchases
@@ -261,6 +280,17 @@ def profile():
         LIMIT 3
     """, (current_user.id,))
     recent = cur.fetchall()
+
+    # ================= OWNER ITEM CATALOG =================
+    catalog_items = []
+
+    if current_user.role == "owner":
+        cur.execute("""
+            SELECT id, name, default_cost, image
+            FROM item_catalog
+            ORDER BY name ASC
+        """)
+        catalog_items = cur.fetchall()
 
     cur.close()
     conn.close()
@@ -273,7 +303,8 @@ def profile():
         points=points,
         total_purchases=total_purchases,
         last_purchase=last_purchase,
-        recent=recent
+        recent=recent,
+        catalog_items=catalog_items
     )
 
 # ================= STORE =================
