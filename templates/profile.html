@@ -278,6 +278,14 @@
 
         <h4>Current Catalog</h4>
 
+        <!-- SCROLLABLE CATALOG LIST -->
+        <div style="
+            max-height:380px;
+            overflow-y:auto;
+            overflow-x:hidden;
+            padding-right:8px;
+        ">
+
         {% for item in catalog_items %}
 
             <div style="
@@ -347,6 +355,7 @@
             </div>
 
         {% endfor %}
+    </div>
 
     {% else %}
 
