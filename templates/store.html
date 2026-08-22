@@ -12,13 +12,94 @@
 {% if is_owner %}
 <div class="card" style="width:260px;">
     <h3>Create Item</h3>
-    <form method="post" enctype="multipart/form-data">
-        <input name="name" placeholder="Item Name" required>
-        <input name="cost" placeholder="Cost" required>
-        <input name="quantity" placeholder="Quantity" required>
-        <input type="file" name="image_file" accept="image/*">
-        <button name="create_item">Add Item</button>
+
+    {% if catalog_items %}
+
+    <form method="post">
+
+        <label style="font-size:12px; opacity:.7;">
+            Select Item
+        </label>
+
+        <select
+            id="catalogSelect"
+            name="catalog_id"
+            required
+            onchange="loadCatalogItem()"
+            style="
+                width:100%;
+                padding:12px;
+                margin:8px 0 16px 0;
+                border-radius:8px;
+                border:1px solid #2e3b55;
+                background:#0b162b;
+                color:white;
+            "
+        >
+            <option value="">Choose an item...</option>
+
+            {% for item in catalog_items %}
+            <option
+                value="{{ item[0] }}"
+                data-name="{{ item[1] }}"
+                data-cost="{{ item[2] }}"
+            >
+                {{ item[1] }}
+            </option>
+            {% endfor %}
+
+        </select>
+
+        <input
+            type="hidden"
+            id="catalogName"
+            name="name"
+        >
+
+        <label style="font-size:12px; opacity:.7;">
+            Cost
+        </label>
+
+        <input
+            id="catalogCost"
+            name="cost"
+            type="number"
+            placeholder="Cost"
+            required
+        >
+
+        <label style="font-size:12px; opacity:.7;">
+            Quantity
+        </label>
+
+        <input
+            name="quantity"
+            type="number"
+            placeholder="Quantity"
+            min="1"
+            required
+        >
+
+        <button name="create_item">
+            Add Item
+        </button>
+
     </form>
+
+    {% else %}
+
+    <p style="opacity:.6;">
+        No items have been added to the Store Catalog yet.
+    </p>
+
+    <a href="/profile">
+        <button type="button">
+            Manage Catalog
+        </button>
+    </a>
+
+    {% endif %}
+
 </div>
 {% endif %}
 
@@ -193,6 +274,24 @@ function preparePurchase() {
 
     return true;
 }
+
+function loadCatalogItem() {
+    const select = document.getElementById("catalogSelect");
+    const option = select.options[select.selectedIndex];
+
+    const nameInput = document.getElementById("catalogName");
+    const costInput = document.getElementById("catalogCost");
+
+    if (!option || !option.value) {
+        nameInput.value = "";
+        costInput.value = "";
+        return;
+    }
+
+    nameInput.value = option.dataset.name;
+    costInput.value = option.dataset.cost;
+}
+
 </script>
 
 {% endblock %}

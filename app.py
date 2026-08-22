@@ -31,7 +31,6 @@ login_manager.login_view = "login"
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
-ensure_item_catalog_table()
 
 def ensure_item_catalog_table():
     conn = get_db_connection()
@@ -202,6 +201,77 @@ def profile():
 
     if request.method == "POST":
 
+        # ================= OWNER ITEM CATALOG =================
+        if "catalog_action" in request.form:
+
+            # OWNER ONLY
+            if current_user.role != "owner":
+                flash("Unauthorized", "error")
+                return redirect(url_for("profile"))
+
+            catalog_action = request.form.get("catalog_action")
+
+            # ================= ADD CATALOG ITEM =================
+            if catalog_action == "add":
+
+                name = request.form.get("catalog_name", "").strip()
+                cost = request.form.get("catalog_cost")
+                image_filename = None
+
+                if not name or not cost:
+                    flash("Item name and default cost are required", "error")
+                    return redirect(url_for("profile"))
+
+                try:
+                    cost = int(cost)
+                except ValueError:
+                    flash("Default cost must be a number", "error")
+                    return redirect(url_for("profile"))
+
+                # IMAGE UPLOAD
+                if "catalog_image" in request.files:
+                    file = request.files["catalog_image"]
+
+                    if file and file.filename != "":
+                        from werkzeug.utils import secure_filename
+
+                        filename = secure_filename(file.filename)
+                        filepath = os.path.join("static/uploads", filename)
+                        file.save(filepath)
+
+                        image_filename = f"/static/uploads/{filename}"
+
+                try:
+                    cur.execute("""
+                        INSERT INTO item_catalog (name, default_cost, image)
+                        VALUES (%s, %s, %s)
+                    """, (name, cost, image_filename))
+
+                    conn.commit()
+                    flash("Item added to Store Catalog", "success")
+
+                except psycopg2.IntegrityError:
+                    conn.rollback()
+                    flash("That item is already in the catalog", "error")
+
+                return redirect(url_for("profile"))
+
+            # ================= REMOVE CATALOG ITEM =================
+            if catalog_action == "remove":
+
+                catalog_id = request.form.get("catalog_id")
+
+                if catalog_id:
+                    cur.execute(
+                        "DELETE FROM item_catalog WHERE id = %s",
+                        (catalog_id,)
+                    )
+
+                    conn.commit()
+                    flash("Item removed from Store Catalog", "success")
+
+                return redirect(url_for("profile"))
+
         # ================= CHANGE PIN =================
         if "current_pin" in request.form:
 
@@ -330,18 +400,38 @@ def store():
 
                 image_filename = f"/static/uploads/{filename}"
 
-        # ================= CREATE ITEM =================
+                # ================= CREATE ITEM =================
         if "create_item" in request.form and current_user.role == "owner":
-            name = request.form["name"]
+            catalog_id = request.form.get("catalog_id")
             cost = int(request.form["cost"])
             quantity = int(request.form["quantity"])
 
-            cur.execute(
-                "INSERT INTO items (name, cost, quantity, image) VALUES (%s, %s, %s, %s)",
-                (name, cost, quantity, image_filename)
-            )
+            if not catalog_id:
+                flash("Please select an item", "error")
+                return redirect(url_for("store"))
+
+            # Get the item's saved name and image from the catalog
+            cur.execute("""
+                SELECT name, image
+                FROM item_catalog
+                WHERE id = %s
+            """, (catalog_id,))
+
+            catalog_item = cur.fetchone()
+
+            if not catalog_item:
+                flash("Catalog item not found", "error")
+                return redirect(url_for("store"))
+
+            name, catalog_image = catalog_item
+
+            cur.execute("""
+                INSERT INTO items (name, cost, quantity, image)
+                VALUES (%s, %s, %s, %s)
+            """, (name, cost, quantity, catalog_image))
 
             conn.commit()
+
             flash("Item created!", "success")
             return redirect(url_for("store"))
 
@@ -441,6 +531,17 @@ def store():
     """)
     items = cur.fetchall()
 
+    # ================= GET ITEM CATALOG =================
+    catalog_items = []
+
+    if current_user.role == "owner":
+        cur.execute("""
+            SELECT id, name, default_cost, image
+            FROM item_catalog
+            ORDER BY name ASC
+        """)
+        catalog_items = cur.fetchall()
+
     cur.close()
     conn.close()
 
@@ -450,6 +551,7 @@ def store():
             {"id": i[0], "name": i[1], "cost": i[2], "quantity": i[3], "image": i[4]}
             for i in items
         ],
+        catalog_items=catalog_items,
         is_owner=(current_user.role == "owner"),
     )
 
@@ -732,6 +834,7 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
+ensure_item_catalog_table()
 
 if __name__ == "__main__":
     app.run(debug=True)
