@@ -284,16 +284,42 @@
                 display:flex;
                 align-items:center;
                 justify-content:space-between;
-                gap:10px;
+                gap:12px;
                 padding:10px 0;
                 border-bottom:1px solid #334155;
             ">
 
-                <div>
-                    <strong>{{ item[1] }}</strong><br>
-                    <span style="font-size:12px; opacity:.6;">
-                        {{ item[2] }} pts
-                    </span>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:12px;
+                    min-width:0;
+                ">
+
+                    {% if item.image %}
+                        <img
+                            src="{{ item.image }}"
+                            alt="{{ item.name }}"
+                            style="
+                                width:48px;
+                                height:48px;
+                                object-fit:contain;
+                                border-radius:8px;
+                                background:#0f172a;
+                                border:1px solid #334155;
+                                flex-shrink:0;
+                            "
+                        >
+                    {% endif %}
+
+                    <div>
+                        <strong>{{ item.name }}</strong><br>
+
+                        <span style="font-size:12px; opacity:.6;">
+                            {{ item.default_cost }} pts
+                        </span>
+                    </div>
+
                 </div>
 
                 <form method="post" style="margin:0;">
@@ -306,7 +332,7 @@
                     <input
                         type="hidden"
                         name="catalog_id"
-                        value="{{ item[0] }}"
+                        value="{{ item.id }}"
                     >
 
                     <button
