@@ -396,8 +396,131 @@
     </p>
 
     <!-- ADD RECIPIENT -->
-    <form method="post"> 
-        
+    <form method="post" style="margin-top:15px;">
+
+        <input
+            type="hidden"
+            name="discord_action"
+            value="add"
+        >
+
+        <label style="font-size:12px; opacity:.7;">
+            Name
+        </label>
+
+        <input
+            type="text"
+            name="discord_name"
+            placeholder="Example: Tyler"
+            required
+            style="width:100%; margin-bottom:10px;"
+        >
+
+        <label style="font-size:12px; opacity:.7;">
+            Discord User ID
+        </label>
+
+        <input
+            type="text"
+            name="discord_id"
+            placeholder="Example: 123456789012345678"
+            required
+            style="width:100%; margin-bottom:10px;"
+        >
+
+        <button type="submit" style="width:100%;">
+            Add Discord Recipient
+        </button>
+
+    </form>
+
+
+    <!-- CURRENT RECIPIENTS -->
+    <div style="margin-top:20px;">
+
+        <strong style="font-size:13px;">
+            Current Recipients
+        </strong>
+
+        {% if discord_notifications %}
+
+            {% for recipient in discord_notifications %}
+
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    gap:10px;
+                    padding:10px 0;
+                    border-bottom:1px solid #334155;
+                ">
+
+                    <div style="min-width:0;">
+
+                        <strong>
+                            {{ recipient.name }}
+                        </strong>
+
+                        <br>
+
+                        <span style="
+                            font-size:11px;
+                            opacity:.6;
+                            word-break:break-all;
+                        ">
+                            {{ recipient.discord_id }}
+                        </span>
+
+                    </div>
+
+                    <form method="post" style="margin:0;">
+
+                        <input
+                            type="hidden"
+                            name="discord_action"
+                            value="remove"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="notification_id"
+                            value="{{ recipient.id }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="delete"
+                            style="
+                                width:auto;
+                                padding:6px 10px;
+                                margin:0;
+                            "
+                        >
+                            Remove
+                        </button>
+
+                    </form>
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <p style="
+                opacity:.6;
+                font-size:12px;
+                margin-top:10px;
+            ">
+                No Discord recipients added yet.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
 {% endif %}
 
     </div>

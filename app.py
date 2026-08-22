@@ -979,6 +979,27 @@ def profile():
             for item in catalog_rows
         ]
 
+# ================= OWNER DISCORD NOTIFICATIONS =================
+    discord_notifications = []
+
+    if current_user.role == "owner":
+        cur.execute("""
+            SELECT id, name, discord_id
+            FROM discord_notifications
+            ORDER BY name ASC
+        """)
+
+        discord_rows = cur.fetchall()
+
+        discord_notifications = [
+            {
+                "id": row[0],
+                "name": row[1],
+                "discord_id": row[2]
+            }
+            for row in discord_rows
+        ]
+
     cur.close()
     conn.close()
 
@@ -992,7 +1013,8 @@ def profile():
         total_purchases=total_purchases,
         last_purchase=last_purchase,
         recent=recent,
-        catalog_items=catalog_items
+        catalog_items=catalog_items,
+        discord_notifications=discord_notifications
     )
 
 # ================= THEME MANAGER =================
