@@ -377,8 +377,11 @@ def profile():
         flash("RSN updated", "success")
 
     # USER INFO
-    cur.execute("SELECT rsn, points FROM users WHERE id = %s", (current_user.id,))
-    rsn, points = cur.fetchone()
+    cur.execute(
+        "SELECT rsn, points, profile_picture FROM users WHERE id = %s",
+        (current_user.id,)
+    )
+    rsn, points, profile_picture = cur.fetchone()
 
     # TOTAL PURCHASES
     cur.execute("SELECT COUNT(*) FROM purchases WHERE user_id = %s", (current_user.id,))
@@ -424,6 +427,7 @@ def profile():
         role=current_user.role,
         rsn=rsn,
         points=points,
+        profile_picture=profile_picture,
         total_purchases=total_purchases,
         last_purchase=last_purchase,
         recent=recent,

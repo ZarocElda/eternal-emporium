@@ -4,13 +4,153 @@
 
 <div style="max-width:1100px; margin:0 auto;">
 
-    <!-- HEADER -->
-    <div style="margin-bottom:30px;">
-        <h2 style="margin-bottom:5px;">Welcome, {{ username }}</h2>
-        <p style="opacity:0.6;">Role: {{ role }}</p>
+    <!-- PROFILE HEADER -->
+<div style="
+    display:flex;
+    align-items:center;
+    gap:24px;
+    margin-bottom:30px;
+    padding:22px;
+    background:#1e293b;
+    border-radius:14px;
+">
+
+    <!-- CLICKABLE PROFILE PICTURE -->
+    <form
+        id="profilePictureForm"
+        method="post"
+        enctype="multipart/form-data"
+        style="margin:0;"
+    >
+
+        <input
+            id="profilePictureInput"
+            type="file"
+            name="profile_picture"
+            accept="image/jpeg,image/png,image/webp"
+            style="display:none;"
+            onchange="document.getElementById('profilePictureForm').submit();"
+        >
+
+        <div
+            onclick="document.getElementById('profilePictureInput').click();"
+            title="Change profile picture"
+            style="
+                width:145px;
+                height:145px;
+                border-radius:50%;
+                overflow:hidden;
+                position:relative;
+                cursor:pointer;
+                flex-shrink:0;
+                border:3px solid #475569;
+                background:#0f172a;
+            "
+            class="profile-picture"
+        >
+
+            {% if profile_picture %}
+
+                <img
+                    src="{{ profile_picture }}"
+                    alt="Profile Picture"
+                    style="
+                        width:100%;
+                        height:100%;
+                        object-fit:cover;
+                        display:block;
+                    "
+                >
+
+            {% else %}
+
+                <div style="
+                    width:100%;
+                    height:100%;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:55px;
+                    font-weight:bold;
+                    color:#94a3b8;
+                ">
+                    {{ username[0]|upper }}
+                </div>
+
+            {% endif %}
+
+            <!-- HOVER OVERLAY -->
+            <div class="profile-picture-overlay">
+                <span style="font-size:25px;">📷</span>
+                <span style="font-size:11px; font-weight:600;">
+                    Change Photo
+                </span>
+            </div>
+
+        </div>
+
+    </form>
+
+    <!-- PROFILE INFORMATION -->
+    <div>
+        <h2 style="margin:0 0 7px 0;">
+            {{ username }}
+        </h2>
+
+        <div style="
+            font-size:14px;
+            opacity:.7;
+            margin-bottom:5px;
+        ">
+            {{ rsn or "RSN Not Set" }}
+        </div>
+
+        <div style="
+            display:inline-block;
+            padding:4px 10px;
+            background:#334155;
+            border-radius:20px;
+            font-size:11px;
+            text-transform:uppercase;
+            letter-spacing:.5px;
+            margin-top:4px;
+        ">
+            {{ role }}
+        </div>
     </div>
 
-    <div class="profile-grid">
+</div>
+
+
+<style>
+.profile-picture-overlay {
+    position:absolute;
+    inset:0;
+    background:rgba(0, 0, 0, 0.62);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    opacity:0;
+    transition:opacity 0.2s ease;
+    color:white;
+}
+
+.profile-picture:hover .profile-picture-overlay {
+    opacity:1;
+}
+
+@media (max-width:600px) {
+    .profile-picture {
+        width:110px !important;
+        height:110px !important;
+    }
+}
+</style>
+
+
+<div class="profile-grid">
 
         <!-- ACCOUNT CARD -->
         <div class="card highlight">
