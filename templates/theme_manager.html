@@ -39,6 +39,9 @@
                 name="theme_id"
                 value=""
             >
+            <div class="theme-editor-grid">
+            
+            <div class="theme-editor-column">
 
     <!-- ================= BASIC THEME SETTINGS ================= -->
 
@@ -162,6 +165,10 @@
         ></textarea>
 
     </div>
+
+</div>
+
+<div class="theme-editor-column">
 
     <!-- ================= THEME COLORS ================= -->
 
@@ -479,6 +486,8 @@
             </div>
 
         </div>
+    
+    </div>
 
     <!-- ================= THEME SCHEDULING ================= -->
 
@@ -609,18 +618,24 @@
                 background:#475569;
             "
         >
-            ✕ Cancel Editing / Create New Theme
-        </button>
-    </div>
+                    ✕ Cancel Editing / Create New Theme
+                </button>
+            </div>
 
-</form>
+            <!-- CLOSE RIGHT THEME EDITOR COLUMN -->
+            </div>
 
-    </div>
+            <!-- CLOSE TWO-COLUMN THEME EDITOR GRID -->
+            </div>
+
+            </form>
+
+            </div>
 
 
-    <div class="card" style="margin-top:20px;">
+            <div class="card" style="margin-top:20px;">
 
-        <h3>Saved Themes</h3>
+                <h3>Saved Themes</h3>
 
         <form method="post" style="margin:15px 0 20px 0;">
             <input type="hidden" name="theme_action" value="restore_default">
@@ -866,40 +881,6 @@
 
                     </div>
 
-                        <!-- ACTIVATE BUTTON -->
-                        {% if not theme[12] %}
-                            <form method="post" style="margin:0;">
-                                <input type="hidden" name="theme_action" value="activate">
-                                <input type="hidden" name="theme_id" value="{{ theme[0] }}">
-
-                                <button
-                                    type="submit"
-                                    style="width:auto; padding:6px 12px;"
-                                >
-                                    Activate
-                                </button>
-                            </form>
-                        {% endif %}
-
-                        <!-- DELETE BUTTON -->
-                        {% if theme[1] != "Eternal Emporium Default" %}
-                            <form method="post" style="margin:0;">
-                                <input type="hidden" name="theme_action" value="delete">
-                                <input type="hidden" name="theme_id" value="{{ theme[0] }}">
-
-                                <button
-                                    type="submit"
-                                    class="delete"
-                                    style="width:auto; padding:6px 12px;"
-                                    onclick="return confirm('Delete this theme?');"
-                                >
-                                    Delete
-                                </button>
-                            </form>
-                        {% endif %}
-
-                    </div>
-
                 </div>
 
             {% endfor %}
@@ -915,6 +896,25 @@
     </div>
 
 </div>
+
+<style>
+    .theme-editor-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    .theme-editor-column {
+        min-width: 0;
+    }
+
+    @media (max-width: 850px) {
+        .theme-editor-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
 <script>
     document.querySelectorAll("[data-theme-color]").forEach(function(element) {
