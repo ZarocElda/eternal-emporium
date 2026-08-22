@@ -1,6 +1,7 @@
 print("APP STARTING")
 
 import os
+import requests
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
 from dotenv import load_dotenv
@@ -19,6 +20,8 @@ print("DATABASE_URL =", DATABASE_URL)
 if not DATABASE_URL:
     raise Exception("DAfTABASE_URL is NOT set.")
 
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.permanent_session_lifetime = timedelta(minutes=15)
@@ -31,6 +34,97 @@ login_manager.login_view = "login"
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
+def send_discord_order_notification(username, rsn, item_name, quantity, total_cost, discord_ids=None):
+    if not DISCORD_WEBHOOK_URL:
+        print("Discord webhook URL is not configured.")
+        return
+
+    mentions = ""
+
+    if discord_ids:
+        mentions = " ".join(
+            f"<@{discord_id}>"
+            for discord_id in discord_ids
+            if discord_id
+        )
+
+    embed = {
+        "title": "🛒 New Store Order",
+        "color": 3447003,
+        "fields": [
+            {
+                "name": "Customer",
+                "value": username,
+                "inline": True
+            },
+            {
+                "name": "RSN",
+                "value": rsn or "Not Set",
+                "inline": True
+            },
+            {
+                "name": "Item",
+                "value": item_name,
+                "inline": False
+            },
+            {
+                "name": "Quantity",
+                "value": str(quantity),
+                "inline": True
+            },
+            {
+                "name": "Total Cost",
+                "value": f"{total_cost:,} pts",
+                "inline": True
+            }
+        ],
+        "footer": {
+            "text": "Eternal Emporium"
+        }
+    }
+
+    payload = {
+        "username": "Eternal Emporium",
+        "content": mentions,
+        "embeds": [embed],
+        "allowed_mentions": {
+            "parse": ["users"]
+        }
+    }
+
+    try:
+        response = requests.post(
+            DISCORD_WEBHOOK_URL,
+            json=payload,
+            timeout=10
+        )
+
+        if response.status_code not in (200, 204):
+            print(
+                "Discord webhook failed:",
+                response.status_code,
+                response.text
+            )
+
+    except requests.RequestException as error:
+        print("Discord webhook error:", error)
+
+def ensure_discord_notification_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS discord_notifications (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            discord_id VARCHAR(50) NOT NULL UNIQUE,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def ensure_item_catalog_table():
     conn = get_db_connection()
@@ -523,6 +617,76 @@ def profile():
     cur = conn.cursor()
 
     if request.method == "POST":
+
+                # ================= OWNER DISCORD NOTIFICATIONS =================
+        if "discord_action" in request.form:
+
+            if current_user.role != "owner":
+                flash("Unauthorized", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("profile"))
+
+            discord_action = request.form.get("discord_action")
+
+            # ================= ADD DISCORD RECIPIENT =================
+            if discord_action == "add":
+
+                name = request.form.get("discord_name", "").strip()
+                discord_id = request.form.get("discord_id", "").strip()
+
+                if not name or not discord_id:
+                    flash("Name and Discord ID are required", "error")
+                    cur.close()
+                    conn.close()
+                    return redirect(url_for("profile"))
+
+                if not discord_id.isdigit():
+                    flash("Discord ID must contain numbers only", "error")
+                    cur.close()
+                    conn.close()
+                    return redirect(url_for("profile"))
+
+                try:
+                    cur.execute("""
+                        INSERT INTO discord_notifications (
+                            name,
+                            discord_id
+                        )
+                        VALUES (%s, %s)
+                    """, (
+                        name,
+                        discord_id
+                    ))
+
+                    conn.commit()
+                    flash(f"{name} added to Discord notifications", "success")
+
+                except psycopg2.IntegrityError:
+                    conn.rollback()
+                    flash("That Discord ID is already on the notification list", "error")
+
+                cur.close()
+                conn.close()
+                return redirect(url_for("profile"))
+
+            # ================= REMOVE DISCORD RECIPIENT =================
+            if discord_action == "remove":
+
+                notification_id = request.form.get("notification_id")
+
+                if notification_id:
+                    cur.execute("""
+                        DELETE FROM discord_notifications
+                        WHERE id = %s
+                    """, (notification_id,))
+
+                    conn.commit()
+                    flash("Discord notification recipient removed", "success")
+
+                cur.close()
+                conn.close()
+                return redirect(url_for("profile"))
 
         # ================= PROFILE PICTURE =================
         if "profile_picture" in request.files:
@@ -1667,6 +1831,31 @@ def store():
                 ))
 
                 conn.commit()
+
+                # ================= DISCORD ORDER NOTIFICATION =================
+                cur.execute("""
+                    SELECT discord_id
+                    FROM discord_notifications
+                    ORDER BY id ASC
+                """)
+
+                discord_rows = cur.fetchall()
+
+                discord_ids = [
+                    row[0]
+                    for row in discord_rows
+                    if row[0]
+                ]
+
+                send_discord_order_notification(
+                    username=current_user.username,
+                    rsn=rsn,
+                    item_name=name,
+                    quantity=quantity_to_buy,
+                    total_cost=total_cost,
+                    discord_ids=discord_ids
+                )
+
                 flash("Purchase successful!", "success")
 
             cur.close()
@@ -2190,6 +2379,7 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
+ensure_discord_notification_table()
 ensure_item_catalog_table()
 ensure_store_image_columns()
 ensure_profile_picture_column()
