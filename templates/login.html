@@ -12,66 +12,145 @@
 ">
 
     <!-- LOGO -->
-    <img src="{{ url_for('static', filename='er-header-logo.png') }}" style="
-        width:120px;
-        margin-bottom:15px;
-        filter: drop-shadow(0 0 18px rgba(59,130,246,0.6));
-    ">
+    {% if active_theme and active_theme.has_logo %}
+        <img
+            src="{{ url_for('theme_logo_image', theme_id=active_theme.id) }}"
+            alt="Theme Logo"
+            style="
+                width:120px;
+                max-height:140px;
+                object-fit:contain;
+                margin-bottom:15px;
+                filter:drop-shadow(0 0 18px var(--theme-primary));
+            "
+        >
+    {% else %}
+        <img
+            src="{{ url_for('static', filename='er-header-logo.png') }}"
+            alt="Eternal Emporium"
+            style="
+                width:120px;
+                margin-bottom:15px;
+                filter:drop-shadow(0 0 18px var(--theme-primary));
+            "
+        >
+    {% endif %}
 
-    <!-- TITLE -->
+
+    <!-- WEBSITE / THEME TITLE -->
     <h1 style="
         font-size:42px;
         margin-bottom:4px;
+        margin-top:0;
         font-weight:700;
+        color:var(--theme-text);
     ">
-        Eternal Emporium
+        {% if active_theme %}
+            {{ active_theme.theme_title }}
+        {% else %}
+            Eternal Emporium
+        {% endif %}
     </h1>
 
-    <p style="
-        opacity:0.7;
-        margin-bottom:20px;
-        font-size:14px;
+
+    <!-- LOGIN HEADING -->
+    <h2 style="
+        margin-top:12px;
+        margin-bottom:5px;
+        color:var(--theme-primary);
     ">
-        Spend your points. Claim your rewards.
-    </p>
+        {% if active_theme %}
+            {{ active_theme.login_title }}
+        {% else %}
+            Welcome Back
+        {% endif %}
+    </h2>
+
+
+    <!-- LOGIN MESSAGE -->
+    {% if active_theme and active_theme.login_message %}
+        <p style="
+            color:var(--theme-muted-text);
+            margin-top:4px;
+            margin-bottom:20px;
+            font-size:14px;
+            max-width:500px;
+        ">
+            {{ active_theme.login_message }}
+        </p>
+    {% else %}
+        <p style="
+            color:var(--theme-muted-text);
+            margin-top:4px;
+            margin-bottom:20px;
+            font-size:14px;
+        ">
+            Spend your points. Claim your rewards.
+        </p>
+    {% endif %}
+
 
     <!-- LOGIN CARD -->
     <div class="card" style="
         width:320px;
         padding:20px;
+        border-color:var(--theme-border);
     ">
 
         <form method="post">
 
             <div style="text-align:left;">
-                <label style="font-size:13px; opacity:0.7;">Username</label>
-                <input 
-                    name="username" 
-                    placeholder="Enter username" 
+                <label style="
+                    font-size:13px;
+                    color:var(--theme-muted-text);
+                ">
+                    Username
+                </label>
+
+                <input
+                    name="username"
+                    placeholder="Enter username"
                     required
-                    style="width:92%; margin: 0 auto 16px auto; display:block;"
+                    style="
+                        width:92%;
+                        margin:0 auto 16px auto;
+                        display:block;
+                    "
                 >
             </div>
 
+
             <div style="text-align:left;">
-                <label style="font-size:13px; opacity:0.7;">PIN</label>
-                <input 
-                    type="password" 
-                    name="password" 
+                <label style="
+                    font-size:13px;
+                    color:var(--theme-muted-text);
+                ">
+                    PIN
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
                     placeholder="Enter PIN"
                     maxlength="4"
                     inputmode="numeric"
                     pattern="[0-9]*"
                     required
-                    style="width:92%; margin: 0 auto 16px auto; display:block;"
+                    style="
+                        width:92%;
+                        margin:0 auto 16px auto;
+                        display:block;
+                    "
                 >
             </div>
+
 
             <button type="submit" style="margin-top:10px;">
                 Login
             </button>
 
         </form>
+
 
         <!-- REGISTER -->
         <a href="/register" class="register-btn">

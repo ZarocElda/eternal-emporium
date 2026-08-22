@@ -42,11 +42,11 @@
 
             {% for item in catalog_items %}
             <option
-                value="{{ item[0] }}"
-                data-name="{{ item[1] }}"
-                data-cost="{{ item[2] }}"
+                value="{{ item.id }}"
+                data-name="{{ item.name }}"
+                data-cost="{{ item.default_cost }}"
             >
-                {{ item[1] }}
+                {{ item.name }}
             </option>
             {% endfor %}
         </select>
@@ -137,12 +137,24 @@
     </div>
 
     {% if is_owner %}
-        <form method="post">
-            <input name="image" value="{{ item.image or '' }}">
+        <form method="post" enctype="multipart/form-data">
             <input name="name" value="{{ item.name }}">
             <input name="cost" value="{{ item.cost }}">
             <input name="quantity" value="{{ item.quantity }}">
+
+            <label style="font-size:12px; opacity:.7;">
+                Replace Image
+            </label>
+
+            <input
+                type="file"
+                name="image_file"
+                accept="image/*"
+                style="width:100%; box-sizing:border-box;"
+            >
+
             <input type="hidden" name="item_id" value="{{ item.id }}">
+
             <button name="update_item">Save Changes</button>
             <button name="delete_item" value="1" class="delete">
             Delete

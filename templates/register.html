@@ -12,69 +12,150 @@
 ">
 
     <!-- LOGO -->
-    <img src="{{ url_for('static', filename='er_logo.png') }}" style="
-        width:70px;
-        margin-bottom:10px;
-        filter: drop-shadow(0 0 12px rgba(59,130,246,0.6));
-    ">
+    {% if active_theme and active_theme.has_logo %}
+        <img
+            src="{{ url_for('theme_logo_image', theme_id=active_theme.id) }}"
+            alt="Theme Logo"
+            style="
+                width:70px;
+                max-height:100px;
+                object-fit:contain;
+                margin-bottom:10px;
+                filter:drop-shadow(0 0 12px var(--theme-primary));
+            "
+        >
+    {% else %}
+        <img
+            src="{{ url_for('static', filename='er_logo.png') }}"
+            alt="Eternal Emporium"
+            style="
+                width:70px;
+                margin-bottom:10px;
+                filter:drop-shadow(0 0 12px var(--theme-primary));
+            "
+        >
+    {% endif %}
 
-    <!-- TITLE -->
+
+    <!-- REGISTRATION HEADING -->
     <h1 style="
         font-size:32px;
         margin-bottom:5px;
+        color:var(--theme-text);
     ">
-        Create Account
+        {% if active_theme %}
+            {{ active_theme.register_title }}
+        {% else %}
+            Create Account
+        {% endif %}
     </h1>
 
-    <p style="
-        opacity:0.7;
-        margin-bottom:25px;
-    ">
-        Choose a username and a 4-digit PIN
-    </p>
+
+    <!-- REGISTRATION MESSAGE -->
+    {% if active_theme and active_theme.register_message %}
+        <p style="
+            color:var(--theme-muted-text);
+            margin-top:5px;
+            margin-bottom:25px;
+            max-width:500px;
+        ">
+            {{ active_theme.register_message }}
+        </p>
+    {% else %}
+        <p style="
+            color:var(--theme-muted-text);
+            margin-top:5px;
+            margin-bottom:25px;
+        ">
+            Choose a username and a 4-digit PIN
+        </p>
+    {% endif %}
+
 
     <!-- CARD -->
     <div class="card" style="
         width:340px;
         padding:30px;
         text-align:left;
+        border-color:var(--theme-border);
     ">
 
         {% if error %}
-            <p style="color:#ef4444;">{{ error }}</p>
+            <p style="color:#ef4444;">
+                {{ error }}
+            </p>
         {% endif %}
+
 
         <form method="post">
 
             <!-- USERNAME -->
-            <label style="font-size:13px; opacity:0.7;">Username</label>
-            <input name="username" placeholder="Enter username" required
-            style="width:95%; margin: 0 auto 16px auto; display:block;"
+            <label style="
+                font-size:13px;
+                color:var(--theme-muted-text);
+            ">
+                Username
+            </label>
+
+            <input
+                name="username"
+                placeholder="Enter username"
+                required
+                style="
+                    width:95%;
+                    margin:0 auto 16px auto;
+                    display:block;
+                "
             >
 
+
             <!-- PIN -->
-            <label style="font-size:13px; opacity:0.7;">4-Digit PIN</label>
-            <input 
+            <label style="
+                font-size:13px;
+                color:var(--theme-muted-text);
+            ">
+                4-Digit PIN
+            </label>
+
+            <input
+                type="password"
                 name="pin"
                 placeholder="1234"
                 maxlength="4"
                 inputmode="numeric"
                 pattern="[0-9]*"
                 required
-                style="width:95%; margin: 0 auto 16px auto; display:block;"
+                style="
+                    width:95%;
+                    margin:0 auto 16px auto;
+                    display:block;
+                "
             >
 
+
             <!-- CONFIRM PIN -->
-            <label style="font-size:13px; opacity:0.7;">Confirm PIN</label>
-            <input 
+            <label style="
+                font-size:13px;
+                color:var(--theme-muted-text);
+            ">
+                Confirm PIN
+            </label>
+
+            <input
+                type="password"
                 name="verify"
                 placeholder="1234"
                 maxlength="4"
                 inputmode="numeric"
                 pattern="[0-9]*"
                 required
-                style="width:95%; margin: 0 auto 16px auto; display:block;"
+                style="
+                    width:95%;
+                    margin:0 auto 16px auto;
+                    display:block;
+                "
             >
+
 
             <button type="submit" style="margin-top:15px;">
                 Create Account

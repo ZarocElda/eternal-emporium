@@ -49,6 +49,35 @@ def ensure_item_catalog_table():
     cur.close()
     conn.close()
 
+def ensure_store_image_columns():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Catalog item images
+    cur.execute("""
+        ALTER TABLE item_catalog
+        ADD COLUMN IF NOT EXISTS image_data BYTEA
+    """)
+
+    cur.execute("""
+        ALTER TABLE item_catalog
+        ADD COLUMN IF NOT EXISTS image_type VARCHAR(50)
+    """)
+
+    # Active store item images
+    cur.execute("""
+        ALTER TABLE items
+        ADD COLUMN IF NOT EXISTS image_data BYTEA
+    """)
+
+    cur.execute("""
+        ALTER TABLE items
+        ADD COLUMN IF NOT EXISTS image_type VARCHAR(50)
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def ensure_profile_picture_column():
     conn = get_db_connection()
@@ -144,6 +173,39 @@ def ensure_theme_tables():
             TRUE
         )
         ON CONFLICT (name) DO NOTHING
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def ensure_theme_text_columns():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        ALTER TABLE themes
+        ADD COLUMN IF NOT EXISTS login_title VARCHAR(200)
+    """)
+
+    cur.execute("""
+        ALTER TABLE themes
+        ADD COLUMN IF NOT EXISTS login_message TEXT
+    """)
+
+    cur.execute("""
+        ALTER TABLE themes
+        ADD COLUMN IF NOT EXISTS register_title VARCHAR(200)
+    """)
+
+    cur.execute("""
+        ALTER TABLE themes
+        ADD COLUMN IF NOT EXISTS register_message TEXT
+    """)
+
+    cur.execute("""
+        ALTER TABLE themes
+        ADD COLUMN IF NOT EXISTS browser_title VARCHAR(200)
     """)
 
     conn.commit()
@@ -317,6 +379,142 @@ def profile_picture_image(user_id):
         mimetype=content_type or "image/jpeg"
     )
 
+# ================= STORE ITEM IMAGES =================
+
+@app.route("/catalog_image/<int:catalog_id>")
+def catalog_image(catalog_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT image_data, image_type
+        FROM item_catalog
+        WHERE id = %s
+    """, (catalog_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result or not result[0]:
+        return "", 404
+
+    image_data, content_type = result
+
+    return Response(
+        bytes(image_data),
+        mimetype=content_type or "image/jpeg"
+    )
+
+
+@app.route("/item_image/<int:item_id>")
+def item_image(item_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT image_data, image_type
+        FROM items
+        WHERE id = %s
+    """, (item_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result or not result[0]:
+        return "", 404
+
+    image_data, content_type = result
+
+    return Response(
+        bytes(image_data),
+        mimetype=content_type or "image/jpeg"
+    )
+
+# ================= THEME IMAGES =================
+
+@app.route("/theme_logo/<int:theme_id>")
+def theme_logo_image(theme_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT logo_image, logo_image_type
+        FROM themes
+        WHERE id = %s
+    """, (theme_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result or not result[0]:
+        return "", 404
+
+    image_data, content_type = result
+
+    return Response(
+        bytes(image_data),
+        mimetype=content_type or "image/png"
+    )
+
+
+@app.route("/theme_banner/<int:theme_id>")
+def theme_banner_image(theme_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT banner_image, banner_image_type
+        FROM themes
+        WHERE id = %s
+    """, (theme_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result or not result[0]:
+        return "", 404
+
+    image_data, content_type = result
+
+    return Response(
+        bytes(image_data),
+        mimetype=content_type or "image/jpeg"
+    )
+
+@app.route("/theme_background/<int:theme_id>")
+def theme_background_image(theme_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT background_image, background_image_type
+        FROM themes
+        WHERE id = %s
+    """, (theme_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result or not result[0]:
+        return "", 404
+
+    image_data, content_type = result
+
+    return Response(
+        bytes(image_data),
+        mimetype=content_type or "image/jpeg"
+    )
+
 # ================= PROFILE =================
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
@@ -384,7 +582,8 @@ def profile():
             if catalog_action == "add":
                 name = request.form.get("catalog_name", "").strip()
                 cost = request.form.get("catalog_cost")
-                image_filename = None
+                image_data = None
+                image_type = None
 
                 if not name or not cost:
                     flash("Item name and default cost are required", "error")
@@ -404,19 +603,40 @@ def profile():
                     file = request.files["catalog_image"]
 
                     if file and file.filename != "":
-                        from werkzeug.utils import secure_filename
+                        extension = os.path.splitext(file.filename)[1].lower()
+                        allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
-                        filename = secure_filename(file.filename)
-                        filepath = os.path.join("static/uploads", filename)
-                        file.save(filepath)
+                        if extension not in allowed_extensions:
+                            flash("Catalog image must be JPG, PNG, or WEBP", "error")
+                            cur.close()
+                            conn.close()
+                            return redirect(url_for("profile"))
 
-                        image_filename = f"/static/uploads/{filename}"
+                        image_data = file.read()
+
+                        if len(image_data) > 5 * 1024 * 1024:
+                            flash("Catalog image must be smaller than 5 MB", "error")
+                            cur.close()
+                            conn.close()
+                            return redirect(url_for("profile"))
+
+                        image_type = file.content_type
 
                 try:
                     cur.execute("""
-                        INSERT INTO item_catalog (name, default_cost, image)
-                        VALUES (%s, %s, %s)
-                    """, (name, cost, image_filename))
+                        INSERT INTO item_catalog (
+                            name,
+                            default_cost,
+                            image_data,
+                            image_type
+                        )
+                        VALUES (%s, %s, %s, %s)
+                    """, (
+                        name,
+                        cost,
+                        psycopg2.Binary(image_data) if image_data else None,
+                        image_type
+                    ))
 
                     conn.commit()
                     flash("Item added to Store Catalog", "success")
@@ -570,12 +790,30 @@ def profile():
 
     if current_user.role == "owner":
         cur.execute("""
-            SELECT id, name, default_cost, image
+            SELECT
+                id,
+                name,
+                default_cost,
+                image_data IS NOT NULL
             FROM item_catalog
             ORDER BY name ASC
         """)
 
-        catalog_items = cur.fetchall()
+        catalog_rows = cur.fetchall()
+
+        catalog_items = [
+            {
+                "id": item[0],
+                "name": item[1],
+                "default_cost": item[2],
+                "image": (
+                    url_for("catalog_image", catalog_id=item[0])
+                    if item[3]
+                    else None
+                )
+            }
+            for item in catalog_rows
+        ]
 
     cur.close()
     conn.close()
@@ -593,6 +831,609 @@ def profile():
         catalog_items=catalog_items
     )
 
+# ================= THEME MANAGER =================
+@app.route("/theme_manager", methods=["GET", "POST"])
+@login_required
+def theme_manager():
+
+    # OWNER ONLY
+    if current_user.role != "owner":
+        flash("Only the owner can manage website themes", "error")
+        return redirect(url_for("store"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # ================= THEME ACTIONS =================
+    if request.method == "POST":
+
+        theme_action = request.form.get("theme_action")
+        theme_id = request.form.get("theme_id")
+
+        # ================= ACTIVATE THEME =================
+        if theme_action == "activate" and theme_id:
+
+            cur.execute("""
+                UPDATE themes
+                SET is_active = FALSE
+            """)
+
+            cur.execute("""
+                UPDATE themes
+                SET is_active = TRUE
+                WHERE id = %s
+            """, (theme_id,))
+
+            conn.commit()
+
+            flash("Theme activated!", "success")
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("theme_manager"))
+
+        # ================= DELETE THEME =================
+        if theme_action == "delete" and theme_id:
+
+            cur.execute("""
+                SELECT name
+                FROM themes
+                WHERE id = %s
+            """, (theme_id,))
+
+            theme = cur.fetchone()
+
+            if not theme:
+                flash("Theme not found", "error")
+
+            elif theme[0] == "Eternal Emporium Default":
+                flash("The default theme cannot be deleted", "error")
+
+            else:
+                cur.execute("""
+                    DELETE FROM themes
+                    WHERE id = %s
+                """, (theme_id,))
+
+                conn.commit()
+                flash("Theme deleted", "success")
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("theme_manager"))
+
+        # ================= RESTORE DEFAULT =================
+        if theme_action == "restore_default":
+
+            cur.execute("""
+                UPDATE themes
+                SET is_active = FALSE
+            """)
+
+            cur.execute("""
+                UPDATE themes
+                SET is_active = TRUE
+                WHERE name = 'Eternal Emporium Default'
+            """)
+
+            conn.commit()
+
+            flash("Default Eternal Emporium theme restored!", "success")
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("theme_manager"))
+
+        # ================= EDIT THEME =================
+        if theme_action == "edit" and theme_id:
+
+            theme_name = request.form.get("theme_name", "").strip()
+            theme_title = request.form.get("theme_title", "").strip()
+            browser_title = request.form.get("browser_title", "").strip()
+
+            login_title = request.form.get("login_title", "").strip()
+            login_message = request.form.get("login_message", "").strip()
+
+            register_title = request.form.get("register_title", "").strip()
+            register_message = request.form.get("register_message", "").strip()
+
+            primary_color = request.form.get("primary_color", "#3b82f6")
+            accent_color = request.form.get("accent_color", "#22c55e")
+            page_background = request.form.get("page_background", "#0f172a")
+            card_background = request.form.get("card_background", "#1e293b")
+            header_background = request.form.get("header_background", "#020617")
+            text_color = request.form.get("text_color", "#e2e8f0")
+            muted_text_color = request.form.get("muted_text_color", "#94a3b8")
+            button_color = request.form.get("button_color", "#3b82f6")
+            border_color = request.form.get("border_color", "#334155")
+
+            start_date_raw = request.form.get("start_date", "").strip()
+            end_date_raw = request.form.get("end_date", "").strip()
+
+            activate_now = request.form.get("activate_now") == "yes"
+
+            # Theme name is required
+            if not theme_name:
+                flash("Theme name is required", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            # ================= DATES =================
+            start_date = None
+            end_date = None
+
+            try:
+                if start_date_raw:
+                    start_date = datetime.fromisoformat(start_date_raw)
+
+                if end_date_raw:
+                    end_date = datetime.fromisoformat(end_date_raw)
+
+            except ValueError:
+                flash("Invalid theme start or end date", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            if start_date and end_date and end_date <= start_date:
+                flash("Theme end date must be after the start date", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            # ================= IMAGE HELPER =================
+            allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+            max_image_size = 5 * 1024 * 1024
+
+            def read_edit_theme_image(field_name):
+
+                file = request.files.get(field_name)
+
+                if not file or file.filename == "":
+                    return None, None
+
+                extension = os.path.splitext(file.filename)[1].lower()
+
+                if extension not in allowed_extensions:
+                    raise ValueError(
+                        "Theme images must be JPG, PNG, or WEBP"
+                    )
+
+                image_data = file.read()
+
+                if len(image_data) > max_image_size:
+                    raise ValueError(
+                        "Each theme image must be smaller than 5 MB"
+                    )
+
+                return psycopg2.Binary(image_data), file.content_type
+
+            try:
+                logo_image, logo_image_type = read_edit_theme_image(
+                    "logo_image"
+                )
+
+                banner_image, banner_image_type = read_edit_theme_image(
+                    "banner_image"
+                )
+
+                background_image, background_image_type = read_edit_theme_image(
+                    "background_image"
+                )
+
+            except ValueError as error:
+                flash(str(error), "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            # Make sure the theme actually exists
+            cur.execute("""
+                SELECT
+                    name,
+                    logo_image,
+                    logo_image_type,
+                    banner_image,
+                    banner_image_type,
+                    background_image,
+                    background_image_type
+                FROM themes
+                WHERE id = %s
+            """, (theme_id,))
+
+            existing_theme = cur.fetchone()
+
+            if not existing_theme:
+                flash("Theme not found", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            # Protect the permanent default theme name
+            if existing_theme[0] == "Eternal Emporium Default":
+                theme_name = "Eternal Emporium Default"
+
+            # ================= KEEP / REPLACE / REMOVE IMAGES =================
+
+            remove_logo = request.form.get("remove_logo_image") == "yes"
+            remove_banner = request.form.get("remove_banner_image") == "yes"
+            remove_background = request.form.get("remove_background_image") == "yes"
+
+            # LOGO
+            # A newly uploaded image takes priority.
+            # Otherwise remove it if requested, or keep the existing image.
+            if logo_image is None:
+                if remove_logo:
+                    logo_image = None
+                    logo_image_type = None
+                else:
+                    logo_image = existing_theme[1]
+                    logo_image_type = existing_theme[2]
+
+            # BANNER
+            if banner_image is None:
+                if remove_banner:
+                    banner_image = None
+                    banner_image_type = None
+                else:
+                    banner_image = existing_theme[3]
+                    banner_image_type = existing_theme[4]
+
+            # BACKGROUND
+            if background_image is None:
+                if remove_background:
+                    background_image = None
+                    background_image_type = None
+                else:
+                    background_image = existing_theme[5]
+                    background_image_type = existing_theme[6]
+
+            # If requested, make this the manually active theme
+            if activate_now:
+                cur.execute("""
+                    UPDATE themes
+                    SET is_active = FALSE
+                """)
+
+            try:
+                cur.execute("""
+                    UPDATE themes
+                    SET
+                        name = %s,
+                        theme_title = %s,
+                        primary_color = %s,
+                        accent_color = %s,
+                        page_background = %s,
+                        card_background = %s,
+                        header_background = %s,
+                        text_color = %s,
+                        muted_text_color = %s,
+                        button_color = %s,
+                        border_color = %s,
+
+                        banner_image = %s,
+                        banner_image_type = %s,
+
+                        background_image = %s,
+                        background_image_type = %s,
+
+                        logo_image = %s,
+                        logo_image_type = %s,
+
+                        start_date = %s,
+                        end_date = %s,
+
+                        login_title = %s,
+                        login_message = %s,
+                        register_title = %s,
+                        register_message = %s,
+                        browser_title = %s,
+
+                        is_active = CASE
+                            WHEN %s THEN TRUE
+                            ELSE is_active
+                        END
+
+                    WHERE id = %s
+                """, (
+                    theme_name,
+                    theme_title or "Eternal Emporium",
+                    primary_color,
+                    accent_color,
+                    page_background,
+                    card_background,
+                    header_background,
+                    text_color,
+                    muted_text_color,
+                    button_color,
+                    border_color,
+
+                    banner_image,
+                    banner_image_type,
+
+                    background_image,
+                    background_image_type,
+
+                    logo_image,
+                    logo_image_type,
+
+                    start_date,
+                    end_date,
+
+                    login_title or None,
+                    login_message or None,
+                    register_title or None,
+                    register_message or None,
+                    browser_title or "Eternal Emporium",
+
+                    activate_now,
+                    theme_id
+                ))
+
+                conn.commit()
+
+            except psycopg2.IntegrityError:
+                conn.rollback()
+                flash("A theme with that name already exists", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("theme_manager"))
+
+            flash("Theme updated successfully!", "success")
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("theme_manager"))
+
+    # ================= CREATE THEME =================
+    if request.method == "POST" and request.form.get("theme_action") == "create":
+
+        theme_name = request.form.get("theme_name", "").strip()
+        theme_title = request.form.get("theme_title", "").strip()
+        browser_title = request.form.get("browser_title", "").strip()
+
+        login_title = request.form.get("login_title", "").strip()
+        login_message = request.form.get("login_message", "").strip()
+
+        register_title = request.form.get("register_title", "").strip()
+        register_message = request.form.get("register_message", "").strip()
+
+        primary_color = request.form.get("primary_color", "#3b82f6")
+        accent_color = request.form.get("accent_color", "#22c55e")
+        page_background = request.form.get("page_background", "#0f172a")
+        card_background = request.form.get("card_background", "#1e293b")
+        header_background = request.form.get("header_background", "#020617")
+        text_color = request.form.get("text_color", "#e2e8f0")
+        muted_text_color = request.form.get("muted_text_color", "#94a3b8")
+        button_color = request.form.get("button_color", "#3b82f6")
+        border_color = request.form.get("border_color", "#334155")
+
+        start_date_raw = request.form.get("start_date", "").strip()
+        end_date_raw = request.form.get("end_date", "").strip()
+
+        activate_now = request.form.get("activate_now") == "yes"
+
+        # Theme name is required
+        if not theme_name:
+            flash("Theme name is required", "error")
+            cur.close()
+            conn.close()
+            return redirect(url_for("theme_manager"))
+
+        # ================= DATES =================
+
+        start_date = None
+        end_date = None
+
+        try:
+            if start_date_raw:
+                start_date = datetime.fromisoformat(start_date_raw)
+
+            if end_date_raw:
+                end_date = datetime.fromisoformat(end_date_raw)
+
+        except ValueError:
+            flash("Invalid theme start or end date", "error")
+            cur.close()
+            conn.close()
+            return redirect(url_for("theme_manager"))
+
+        if start_date and end_date and end_date <= start_date:
+            flash("Theme end date must be after the start date", "error")
+            cur.close()
+            conn.close()
+            return redirect(url_for("theme_manager"))
+
+        # ================= IMAGE HELPER =================
+
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+        max_image_size = 5 * 1024 * 1024
+
+        def read_theme_image(field_name):
+
+            file = request.files.get(field_name)
+
+            if not file or file.filename == "":
+                return None, None
+
+            extension = os.path.splitext(file.filename)[1].lower()
+
+            if extension not in allowed_extensions:
+                raise ValueError(
+                    "Theme images must be JPG, PNG, or WEBP"
+                )
+
+            image_data = file.read()
+
+            if len(image_data) > max_image_size:
+                raise ValueError(
+                    "Each theme image must be smaller than 5 MB"
+                )
+
+            return psycopg2.Binary(image_data), file.content_type
+
+        try:
+            logo_image, logo_image_type = read_theme_image("logo_image")
+            banner_image, banner_image_type = read_theme_image("banner_image")
+            background_image, background_image_type = read_theme_image(
+                "background_image"
+            )
+
+        except ValueError as error:
+            flash(str(error), "error")
+            cur.close()
+            conn.close()
+            return redirect(url_for("theme_manager"))
+
+        # ================= ACTIVATE =================
+
+        # Only one theme should be manually active at a time.
+        if activate_now:
+            cur.execute("""
+                UPDATE themes
+                SET is_active = FALSE
+            """)
+
+        # ================= INSERT THEME =================
+
+        try:
+            cur.execute("""
+                INSERT INTO themes (
+                    name,
+                    theme_title,
+                    primary_color,
+                    accent_color,
+                    page_background,
+                    card_background,
+                    header_background,
+                    text_color,
+                    muted_text_color,
+                    button_color,
+                    border_color,
+
+                    banner_image,
+                    banner_image_type,
+
+                    background_image,
+                    background_image_type,
+
+                    logo_image,
+                    logo_image_type,
+
+                    is_active,
+                    start_date,
+                    end_date,
+
+                    login_title,
+                    login_message,
+                    register_title,
+                    register_message,
+                    browser_title
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s
+                )
+            """, (
+                theme_name,
+                theme_title or "Eternal Emporium",
+                primary_color,
+                accent_color,
+                page_background,
+                card_background,
+                header_background,
+                text_color,
+                muted_text_color,
+                button_color,
+                border_color,
+
+                banner_image,
+                banner_image_type,
+
+                background_image,
+                background_image_type,
+
+                logo_image,
+                logo_image_type,
+
+                activate_now,
+                start_date,
+                end_date,
+
+                login_title or None,
+                login_message or None,
+                register_title or None,
+                register_message or None,
+                browser_title or "Eternal Emporium"
+            ))
+
+            conn.commit()
+
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            flash("A theme with that name already exists", "error")
+            cur.close()
+            conn.close()
+            return redirect(url_for("theme_manager"))
+
+        flash("Theme saved successfully!", "success")
+
+        cur.close()
+        conn.close()
+
+        return redirect(url_for("theme_manager"))
+
+    # ================= GET SAVED THEMES =================
+
+    cur.execute("""
+        SELECT
+            id,
+            name,
+            theme_title,
+            primary_color,
+            accent_color,
+            page_background,
+            card_background,
+            header_background,
+            text_color,
+            muted_text_color,
+            button_color,
+            border_color,
+            is_active,
+            start_date,
+            end_date,
+            created_at,
+            login_title,
+            login_message,
+            register_title,
+            register_message,
+            browser_title,
+            banner_image IS NOT NULL,
+            background_image IS NOT NULL,
+            logo_image IS NOT NULL
+        FROM themes
+        ORDER BY
+            is_active DESC,
+            created_at DESC
+    """)
+
+    themes = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "theme_manager.html",
+        themes=themes
+    )
+
 # ================= STORE =================
 @app.route("/store", methods=["GET", "POST"])
 @login_required
@@ -603,19 +1444,31 @@ def store():
     if request.method == "POST":
 
         # ================= IMAGE UPLOAD =================
-        image_filename = None
+        image_data = None
+        image_type = None
 
         if "image_file" in request.files:
             file = request.files["image_file"]
 
             if file and file.filename != "":
-                from werkzeug.utils import secure_filename
+                extension = os.path.splitext(file.filename)[1].lower()
+                allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
-                filename = secure_filename(file.filename)
-                filepath = os.path.join("static/uploads", filename)
-                file.save(filepath)
+                if extension not in allowed_extensions:
+                    flash("Item image must be JPG, PNG, or WEBP", "error")
+                    cur.close()
+                    conn.close()
+                    return redirect(url_for("store"))
 
-                image_filename = f"/static/uploads/{filename}"
+                image_data = file.read()
+
+                if len(image_data) > 5 * 1024 * 1024:
+                    flash("Item image must be smaller than 5 MB", "error")
+                    cur.close()
+                    conn.close()
+                    return redirect(url_for("store"))
+
+                image_type = file.content_type
 
         # ================= CREATE ITEM =================
         if "create_item" in request.form and current_user.role == "owner":
@@ -628,7 +1481,7 @@ def store():
             # If owner selected a saved catalog item
             if catalog_id:
                 cur.execute("""
-                    SELECT name, image
+                    SELECT name, image_data, image_type
                     FROM item_catalog
                     WHERE id = %s
                 """, (catalog_id,))
@@ -641,11 +1494,12 @@ def store():
                     flash("Catalog item not found", "error")
                     return redirect(url_for("store"))
 
-                name, catalog_image = catalog_item
+                name, catalog_image_data, catalog_image_type = catalog_item
 
                 # Use catalog image unless owner uploaded a new one
-                if not image_filename:
-                    image_filename = catalog_image
+                if image_data is None:
+                    image_data = catalog_image_data
+                    image_type = catalog_image_type
 
             # If adding manually, make sure a name was entered
             if not name:
@@ -655,9 +1509,21 @@ def store():
                 return redirect(url_for("store"))
 
             cur.execute("""
-                INSERT INTO items (name, cost, quantity, image)
-                VALUES (%s, %s, %s, %s)
-            """, (name, cost, quantity, image_filename))
+                INSERT INTO items (
+                    name,
+                    cost,
+                    quantity,
+                    image_data,
+                    image_type
+                )
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                name,
+                cost,
+                quantity,
+                psycopg2.Binary(image_data) if image_data else None,
+                image_type
+            ))
 
             conn.commit()
 
@@ -691,13 +1557,39 @@ def store():
             cost = int(request.form["cost"])
             quantity = int(request.form["quantity"])
 
-            cur.execute("""
-                UPDATE items
-                SET name = %s,
-                    cost = %s,
-                    quantity = %s
-                WHERE id = %s
-            """, (name, cost, quantity, item_id))
+            # If a new image was uploaded, replace the existing image.
+            if image_data is not None:
+                cur.execute("""
+                    UPDATE items
+                    SET name = %s,
+                        cost = %s,
+                        quantity = %s,
+                        image_data = %s,
+                        image_type = %s
+                    WHERE id = %s
+                """, (
+                    name,
+                    cost,
+                    quantity,
+                    psycopg2.Binary(image_data),
+                    image_type,
+                    item_id
+                ))
+
+            # If no new image was uploaded, keep the existing image.
+            else:
+                cur.execute("""
+                    UPDATE items
+                    SET name = %s,
+                        cost = %s,
+                        quantity = %s
+                    WHERE id = %s
+                """, (
+                    name,
+                    cost,
+                    quantity,
+                    item_id
+                ))
 
             conn.commit()
 
@@ -784,7 +1676,7 @@ def store():
 
     # ================= GET ITEMS =================
     cur.execute("""
-        SELECT id, name, cost, quantity, image
+        SELECT id, name, cost, quantity, image_data
         FROM items
         ORDER BY id ASC
     """)
@@ -796,12 +1688,26 @@ def store():
 
     if current_user.role == "owner":
         cur.execute("""
-            SELECT id, name, default_cost, image
+            SELECT id, name, default_cost, image_data
             FROM item_catalog
             ORDER BY name ASC
         """)
 
-        catalog_items = cur.fetchall()
+        catalog_rows = cur.fetchall()
+
+        catalog_items = [
+            {
+                "id": c[0],
+                "name": c[1],
+                "default_cost": c[2],
+                "image": (
+                    url_for("catalog_image", catalog_id=c[0])
+                    if c[3]
+                    else None
+                )
+            }
+            for c in catalog_rows
+        ]
 
     cur.close()
     conn.close()
@@ -814,7 +1720,11 @@ def store():
                 "name": i[1],
                 "cost": i[2],
                 "quantity": i[3],
-                "image": i[4]
+                "image": (
+                    url_for("item_image", item_id=i[0])
+                    if i[4]
+                    else None
+                )
             }
             for i in items
         ],
@@ -1057,6 +1967,164 @@ def inject_user_data():
         user_profile_picture=None
     )
 
+@app.context_processor
+def inject_active_theme():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+        # ================= FIND CURRENT THEME =================
+    # Scheduled themes take priority while their date/time window is active.
+    # Times entered in the Theme Manager are treated as Eastern Time.
+
+    eastern = pytz.timezone("US/Eastern")
+    now_eastern = datetime.now(eastern).replace(tzinfo=None)
+
+    cur.execute("""
+        SELECT
+            id,
+            name,
+            theme_title,
+            primary_color,
+            accent_color,
+            page_background,
+            card_background,
+            header_background,
+            text_color,
+            muted_text_color,
+            button_color,
+            border_color,
+            banner_image,
+            banner_image_type,
+            background_image,
+            background_image_type,
+            logo_image,
+            logo_image_type,
+            login_title,
+            login_message,
+            register_title,
+            register_message,
+            browser_title
+        FROM themes
+        WHERE
+            start_date IS NOT NULL
+            AND end_date IS NOT NULL
+            AND start_date <= %s
+            AND end_date >= %s
+        ORDER BY start_date DESC, id DESC
+        LIMIT 1
+    """, (now_eastern, now_eastern))
+
+    theme = cur.fetchone()
+
+    # If no scheduled theme is currently in its date range,
+    # use the manually activated theme.
+    if not theme:
+        cur.execute("""
+            SELECT
+                id,
+                name,
+                theme_title,
+                primary_color,
+                accent_color,
+                page_background,
+                card_background,
+                header_background,
+                text_color,
+                muted_text_color,
+                button_color,
+                border_color,
+                banner_image,
+                banner_image_type,
+                background_image,
+                background_image_type,
+                logo_image,
+                logo_image_type,
+                login_title,
+                login_message,
+                register_title,
+                register_message,
+                browser_title
+            FROM themes
+            WHERE is_active = TRUE
+            ORDER BY id DESC
+            LIMIT 1
+        """)
+
+        theme = cur.fetchone()
+
+
+    # Fall back to Eternal Emporium Default if no theme is active
+    if not theme:
+        cur.execute("""
+            SELECT
+                id,
+                name,
+                theme_title,
+                primary_color,
+                accent_color,
+                page_background,
+                card_background,
+                header_background,
+                text_color,
+                muted_text_color,
+                button_color,
+                border_color,
+                banner_image,
+                banner_image_type,
+                background_image,
+                background_image_type,
+                logo_image,
+                logo_image_type,
+                login_title,
+                login_message,
+                register_title,
+                register_message,
+                browser_title
+            FROM themes
+            WHERE name = 'Eternal Emporium Default'
+            LIMIT 1
+        """)
+
+        theme = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not theme:
+        return {"active_theme": None}
+
+    active_theme = {
+        "id": theme[0],
+        "name": theme[1],
+        "theme_title": theme[2] or "Eternal Emporium",
+        "primary_color": theme[3],
+        "accent_color": theme[4],
+        "page_background": theme[5],
+        "card_background": theme[6],
+        "header_background": theme[7],
+        "text_color": theme[8],
+        "muted_text_color": theme[9],
+        "button_color": theme[10],
+        "border_color": theme[11],
+
+        "has_banner": theme[12] is not None,
+        "banner_type": theme[13],
+
+        "has_background": theme[14] is not None,
+        "background_type": theme[15],
+
+        "has_logo": theme[16] is not None,
+        "logo_type": theme[17],
+
+        "login_title": theme[18] or "Welcome Back",
+        "login_message": theme[19],
+        "register_title": theme[20] or "Create Account",
+        "register_message": theme[21],
+        "browser_title": theme[22] or "Eternal Emporium"
+    }
+
+    return {"active_theme": active_theme}
+
 # ================= STORE ORDERS LOG =================
 @app.route("/store_orders", methods=["GET", "POST"])
 @login_required
@@ -1123,9 +2191,11 @@ def logout():
     return redirect(url_for("login"))
 
 ensure_item_catalog_table()
+ensure_store_image_columns()
 ensure_profile_picture_column()
 ensure_profile_picture_data_column()
 ensure_theme_tables()
+ensure_theme_text_columns()
 
 if __name__ == "__main__":
     app.run(debug=True)

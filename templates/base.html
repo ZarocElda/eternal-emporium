@@ -1,24 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Eternal Emporium</title>
+    <title>
+        {% if active_theme %}
+            {{ active_theme.browser_title }}
+        {% else %}
+            Eternal Emporium
+        {% endif %}
+    </title>
 
     <style>
+        
+    {% if active_theme %}
+    :root {
+        --theme-primary: {{ active_theme.primary_color }};
+        --theme-accent: {{ active_theme.accent_color }};
+        --theme-page-bg: {{ active_theme.page_background }};
+        --theme-card-bg: {{ active_theme.card_background }};
+        --theme-header-bg: {{ active_theme.header_background }};
+        --theme-text: {{ active_theme.text_color }};
+        --theme-muted-text: {{ active_theme.muted_text_color }};
+        --theme-button: {{ active_theme.button_color }};
+        --theme-border: {{ active_theme.border_color }};
+    }
+    {% else %}
+    :root {
+        --theme-primary: #3b82f6;
+        --theme-accent: #22c55e;
+        --theme-page-bg: #0f172a;
+        --theme-card-bg: #1e293b;
+        --theme-header-bg: #020617;
+        --theme-text: #e2e8f0;
+        --theme-muted-text: #94a3b8;
+        --theme-button: #3b82f6;
+        --theme-border: #334155;
+    }
+    {% endif %}
+
         body {
             margin: 0;
             font-family: "Segoe UI", Arial;
-            background: radial-gradient(circle at top, #1e293b, #020617);
-            color: #e2e8f0;
+            background-color: var(--theme-page-bg);
+            color: var(--theme-text);
+
+            {% if active_theme and active_theme.has_background %}
+            background-image: url("{{ url_for('theme_background_image', theme_id=active_theme.id) }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            {% else %}
+            background-image: radial-gradient(
+                circle at top,
+                var(--theme-card-bg),
+                var(--theme-page-bg)
+            );
+            {% endif %}
         }
 
         /* NAVBAR */
         .nav {
-            background: rgba(2,6,23,0.85);
+            background: var(--theme-header-bg);
             backdrop-filter: blur(6px);       
             padding: 15px 30px;
             display: flex;
             align-items: center;
-            border-bottom: 1px solid #1e293b;
+            border-bottom: 1px solid var(--theme-border);
         }
 
         .nav-left {
@@ -31,18 +78,18 @@
         .brand {
             font-weight: 700;
             font-size: 18px;
-            color: white;
+            color: var(--theme-text);
             margin-right: 25px;
         }
 
         .nav a {
-            color: #cbd5f5;
+            color: var(--theme-muted-text);
             text-decoration: none;
             font-weight: 500;
         }
 
         .nav a:hover {
-            color: white;
+            color: var(--theme-text);
         }
 
         /* RIGHT SIDE */
@@ -89,7 +136,7 @@
 
         /* CARD */
         .card {
-            background: rgba(30,41,59,0.85);
+            background: var(--theme-card-bg);
             backdrop-filter: blur(6px);
             border-radius: 12px;
             padding: 15px;
@@ -97,7 +144,7 @@
             max-width: 300px;
 
             box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-            border: 1px solid #2e3b55;
+            border: 1px solid var(--theme-border);
 
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -110,7 +157,7 @@
             width: 100%;
             height: 140px;
             object-fit: contain;
-            background: #020617;
+            background: var(--theme-page-bg);
             border-radius: 8px;
             margin-bottom: 10px;
             transition: transform 0.2s ease;
@@ -122,15 +169,15 @@
             padding: 12px;
             margin: 8px 0 16px 0;
             border-radius: 8px;
-            border: 1px solid #2e3b55;
-            background-color: #0b162b;
-            color: white;
+            border: 1px solid var(--theme-border);
+            background-color: var(--theme-card-bg);
+            color: var(--theme-text);
             font-size: 14px;
         }
 
         input:focus {
             outline: none;
-            border-color: #3b82f6;
+            border-color: var(--theme-primary);
         }
 
         /* BUTTONS */
@@ -140,14 +187,15 @@
             padding: 8px;
             border: none;
             border-radius: 6px;
-            background: #3b82f6;
+            background: var(--theme-button);
             color: white;
             font-weight: 500;
             cursor: pointer;
         }
 
         button:hover {
-            background: #2563eb;
+            background: var(--theme-primary);
+            filter: brightness(0.88);
         }
 
         .delete {
@@ -164,22 +212,22 @@
             margin-top: 15px;
             padding: 10px;
             background: transparent;
-            border: 1px solid #3b82f6;
+            border: 1px solid var(--theme-primary);
             border-radius: 6px;
-            color: #3b82f6;
+            color: var(--theme-primary);
             text-decoration: none;
             transition: 0.2s;
         }
 
         .register-btn:hover {
-            background: #3b82f6;
+            background: var(--theme-primary);
             color: white;
         }
 
         /* TABLES */
         table {
             border-collapse: collapse;
-            background: #1e293b;
+            background: var(--theme-card-bg);
             border-radius: 8px;
             overflow: hidden;
             margin-top: 10px;
@@ -188,18 +236,22 @@
 
         th, td {
             padding: 10px 14px;
-            border: 1px solid #334155;
+            border: 1px solid var(--theme-border);
             text-align: left;
         }
 
         th {
-            background: radial-gradient(circle at top, #1e293b, #020617);
-            color: #cbd5f5;
+            background: var(--theme-header-bg);
+            color: var(--theme-text);
             font-weight: 600;
         }
 
         tr:hover {
-            background: #1a2438;
+            background: color-mix(
+                in srgb,
+                var(--theme-primary) 12%,
+                var(--theme-card-bg)
+            );
         }
 
         .table-container {
@@ -264,7 +316,7 @@
 .points {
     font-size: 28px;
     font-weight: 700;
-    color: #3b82f6;
+    color: var(--theme-primary);
 }
 
 /* ROLE BADGES */
@@ -295,7 +347,7 @@
 }
 
 .active-nav {
-    color: #3b82f6;
+    color: var(--theme-primary);
     font-weight: 600;
     position: relative;
 }
@@ -307,12 +359,12 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background: #3b82f6;
+    background: var(--theme-primary);
 }
 
 .brand {
     text-decoration: none;
-    color: white;
+    color: var(--theme-text);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -325,13 +377,13 @@
 
 .brand:hover img {
     transform: scale(1.05);
-    filter: drop-shadow(0 0 6px rgba(59,130,246,0.6));
+    filter: drop-shadow(0 0 6px var(--theme-primary));
 }
 
 .bulk-user {
     transform: scale(1.4);
     cursor: pointer;
-    accent-color: #3b82f6;
+    accent-color: var(--theme-primary);
 }
 
 .profile-link {
@@ -345,22 +397,22 @@
 }
 
 .profile-link:hover {
-    background: #0b162b;
-    border-color: #2e3b55;
+    background: var(--theme-card-bg);
+    border-color: var(--theme-border);
 }
 
 .profile-username {
     font-size: 14px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--theme-text);
 }
 
 .profile-avatar {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--theme-card-bg);
+    border: 1px solid var(--theme-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -377,14 +429,33 @@
         <div class="nav-left">
             <a href="/store" class="brand" style="display:flex; align-items:center; gap:10px;">
     
-                <img src="{{ url_for('static', filename='/er-header-logo.png') }}" 
-                    style="
-                        height:28px;
-                        width:auto;
-                        object-fit:contain;
-                    ">
+                {% if active_theme and active_theme.has_logo %}
+                    <img
+                        src="{{ url_for('theme_logo_image', theme_id=active_theme.id) }}"
+                        style="
+                            height:28px;
+                            width:auto;
+                            object-fit:contain;
+                        "
+                    >
+                {% else %}
+                    <img
+                        src="{{ url_for('static', filename='er-header-logo.png') }}"
+                        style="
+                            height:28px;
+                            width:auto;
+                            object-fit:contain;
+                        "
+                    >
+                {% endif %}
 
-                <span>Eternal Emporium</span>
+                <span>
+                    {% if active_theme %}
+                        {{ active_theme.theme_title }}
+                    {% else %}
+                        Eternal Emporium
+                    {% endif %}
+                </span>
 
             </a>
 
@@ -422,18 +493,18 @@
 
         <div style="display:flex; align-items:center; gap:15px;">
 
-                <!-- POINTS DISPLAY -->
-            <div style="
-                background:#0b162b;
-                padding:6px 12px;
-                border-radius:8px;
-                border:1px solid #2e3b55;
-                font-size:14px;
-                color:#22c55e;
-                font-weight:600;
-            ">
-                    {{ user_points }} pts
-            </div>
+<!-- POINTS DISPLAY -->
+<div style="
+    background:var(--theme-card-bg);
+    padding:6px 12px;
+    border-radius:8px;
+    border:1px solid var(--theme-border);
+    font-size:14px;
+    color:var(--theme-accent);
+    font-weight:600;
+">
+    {{ user_points }} pts
+</div>
 
             <!-- PROFILE -->
 <a href="/profile"
@@ -471,6 +542,28 @@
 </div>
 
 <div class="container">
+
+    {% if active_theme and active_theme.has_banner %}
+        <div style="
+            width:100%;
+            margin-bottom:25px;
+            border-radius:12px;
+            overflow:hidden;
+            border:1px solid var(--theme-border);
+            box-shadow:0 6px 18px rgba(0,0,0,0.35);
+        ">
+            <img
+                src="{{ url_for('theme_banner_image', theme_id=active_theme.id) }}"
+                alt="Theme Banner"
+                style="
+                    display:block;
+                    width:100%;
+                    max-height:260px;
+                    object-fit:cover;
+                "
+            >
+        </div>
+    {% endif %}
 
     <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
