@@ -76,6 +76,80 @@ def ensure_profile_picture_data_column():
     cur.close()
     conn.close()
 
+def ensure_theme_tables():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS themes (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            theme_title VARCHAR(150),
+            primary_color VARCHAR(20) NOT NULL DEFAULT '#3b82f6',
+            accent_color VARCHAR(20) NOT NULL DEFAULT '#22c55e',
+            page_background VARCHAR(20) NOT NULL DEFAULT '#0f172a',
+            card_background VARCHAR(20) NOT NULL DEFAULT '#1e293b',
+            header_background VARCHAR(20) NOT NULL DEFAULT '#020617',
+            text_color VARCHAR(20) NOT NULL DEFAULT '#e2e8f0',
+            muted_text_color VARCHAR(20) NOT NULL DEFAULT '#94a3b8',
+            button_color VARCHAR(20) NOT NULL DEFAULT '#3b82f6',
+            border_color VARCHAR(20) NOT NULL DEFAULT '#334155',
+
+            banner_image BYTEA,
+            banner_image_type VARCHAR(50),
+
+            background_image BYTEA,
+            background_image_type VARCHAR(50),
+
+            logo_image BYTEA,
+            logo_image_type VARCHAR(50),
+
+            is_active BOOLEAN NOT NULL DEFAULT FALSE,
+
+            start_date TIMESTAMP,
+            end_date TIMESTAMP,
+
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create the permanent default theme if it does not already exist.
+    cur.execute("""
+        INSERT INTO themes (
+            name,
+            theme_title,
+            primary_color,
+            accent_color,
+            page_background,
+            card_background,
+            header_background,
+            text_color,
+            muted_text_color,
+            button_color,
+            border_color,
+            is_active
+        )
+        VALUES (
+            'Eternal Emporium Default',
+            'Eternal Emporium',
+            '#3b82f6',
+            '#22c55e',
+            '#0f172a',
+            '#1e293b',
+            '#020617',
+            '#e2e8f0',
+            '#94a3b8',
+            '#3b82f6',
+            '#334155',
+            TRUE
+        )
+        ON CONFLICT (name) DO NOTHING
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
 class User(UserMixin):
     def __init__(self, id, username, password, role):
         self.id = id
@@ -924,6 +998,7 @@ def logout():
 ensure_item_catalog_table()
 ensure_profile_picture_column()
 ensure_profile_picture_data_column()
+ensure_theme_tables()
 
 if __name__ == "__main__":
     app.run(debug=True)
