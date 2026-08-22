@@ -63,28 +63,6 @@ def ensure_profile_picture_column():
     cur.close()
     conn.close()
 
-    cur.execute("""
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS profile_picture TEXT
-    """)
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS item_catalog (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL UNIQUE,
-            default_cost INTEGER NOT NULL DEFAULT 0,
-            image TEXT
-        )
-    """)
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
 
 class User(UserMixin):
     def __init__(self, id, username, password, role):
