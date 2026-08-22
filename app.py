@@ -49,39 +49,15 @@ def send_discord_order_notification(username, rsn, item_name, quantity, total_co
         )
 
     embed = {
-        "title": "🛒 New Store Order",
-        "description": "A new purchase has been placed in the Eternal Emporium.",
-        "color": 3447003,
-        "fields": [
-            {
-                "name": "👤 Customer",
-                "value": username,
-                "inline": False
-            },
-            {
-                "name": "🎮 RSN",
-                "value": rsn or "Not Set",
-                "inline": False
-            },
-            {
-                "name": "📦 Item",
-                "value": item_name,
-                "inline": False
-            },
-            {
-                "name": "Quantity",
-                "value": str(quantity),
-                "inline": True
-            },
-            {
-                "name": "Total Cost",
-                "value": f"{total_cost:,} pts",
-                "inline": True
-            }
-        ],
-        "footer": {
-            "text": "Eternal Emporium • Store Order"
-        }
+        "title": "📦 New Store Purchase",
+        "description": (
+            f"👤 **Player:** {username}\n\n"
+            f"🎮 **RSN:** {rsn or 'Not Set'}\n\n"
+            f"🎁 **Item:** {item_name}\n\n"
+            f"🔢 **Quantity:** {quantity}\n\n"
+            f"💰 **Cost:** {total_cost:,} points"
+        ),
+        "color": 15158332
     }
 
     payload = {
