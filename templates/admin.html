@@ -76,6 +76,10 @@
             <span style="background:#f59e0b; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; color:white;">
                 OWNER
             </span>
+        {% elif u[4] == 'store_manager' %}
+            <span style="background:#7c3aed; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; color:white;">
+                STORE MANAGER
+            </span>
         {% elif u[4] == 'admin' %}
             <span style="background:#3b82f6; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; color:white;">
                 ADMIN
@@ -206,6 +210,7 @@
                 <option value="">Change Role</option>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
+                <option value="store_manager">Store Manager</option>
                 <option value="owner">Owner</option>
             </select>
 
@@ -222,6 +227,33 @@
                 margin-top:15px;
         ">
             Delete User
+        </button>
+
+        {% endif %}
+
+        {% if current_user.role == "store_manager" %}
+
+        <hr style="margin:20px 0;">
+
+        <label style="font-size:12px; opacity:.7;">
+            Change User/Admin Role
+        </label>
+
+        <select name="role" style="
+            width:100%;
+            padding:10px;
+            border-radius:8px;
+            background:#020617;
+            color:white;
+            border:1px solid #334155;
+        ">
+            <option value="">Change Role</option>
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <button style="margin-top:8px;">
+            Update Role
         </button>
 
         {% endif %}

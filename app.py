@@ -717,7 +717,7 @@ def profile():
         # ================= OWNER ITEM CATALOG =================
         if "catalog_action" in request.form:
 
-            if current_user.role != "owner":
+            if current_user.role not in ["owner", "store_manager"]:
                 flash("Unauthorized", "error")
                 cur.close()
                 conn.close()
@@ -935,7 +935,7 @@ def profile():
     # ================= OWNER ITEM CATALOG =================
     catalog_items = []
 
-    if current_user.role == "owner":
+    if current_user.role in ["owner", "store_manager"]:
         cur.execute("""
             SELECT
                 id,
@@ -1640,7 +1640,7 @@ def store():
                 image_type = file.content_type
 
         # ================= CREATE ITEM =================
-        if "create_item" in request.form and current_user.role == "owner":
+        if "create_item" in request.form and current_user.role in ["owner", "store_manager"]:
 
             catalog_id = request.form.get("catalog_id")
             name = request.form.get("name", "").strip()
@@ -1703,7 +1703,7 @@ def store():
             return redirect(url_for("store"))
 
         # ================= DELETE ITEM =================
-        if "delete_item" in request.form and current_user.role == "owner":
+        if "delete_item" in request.form and current_user.role in ["owner", "store_manager"]:
             item_id = request.form["item_id"]
 
             cur.execute(
@@ -1720,7 +1720,7 @@ def store():
             return redirect(url_for("store"))
 
         # ================= UPDATE ITEM =================
-        if "update_item" in request.form and current_user.role == "owner":
+        if "update_item" in request.form and current_user.role in ["owner", "store_manager"]:
             item_id = request.form["item_id"]
             name = request.form["name"]
             cost = int(request.form["cost"])
@@ -1880,7 +1880,7 @@ def store():
     # ================= GET ITEM CATALOG =================
     catalog_items = []
 
-    if current_user.role == "owner":
+    if current_user.role in ["owner", "store_manager"]:
         cur.execute("""
             SELECT id, name, default_cost, image_data
             FROM item_catalog
@@ -1923,14 +1923,14 @@ def store():
             for i in items
         ],
         catalog_items=catalog_items,
-        is_owner=(current_user.role == "owner"),
+        can_manage_store=(current_user.role in ["owner", "store_manager"]),
     )
 
 # ================= ADMIN =================
 @app.route("/admin", methods=["GET", "POST"])
 @login_required
 def admin():
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["admin", "store_manager", "owner"]:
         return redirect(url_for("store"))
 
     conn = get_db_connection()
@@ -2012,8 +2012,37 @@ def admin():
 
         # ROLE
         if role:
-            if current_user.role != "owner":
-                flash("Only owners can change roles", "error")
+            if int(user_id) == int(current_user.id):
+                flash("You cannot change your own role", "error")
+                return redirect(url_for("admin"))
+
+            cur.execute(
+                "SELECT role FROM users WHERE id = %s",
+                (user_id,)
+            )
+            target_user = cur.fetchone()
+
+            if not target_user:
+                flash("User not found", "error")
+                return redirect(url_for("admin"))
+
+            target_role = target_user[0]
+
+            if current_user.role == "store_manager":
+                if target_role not in ["user", "admin"]:
+                    flash("You cannot modify Owners or Store Managers", "error")
+                    return redirect(url_for("admin"))
+
+                if role not in ["user", "admin"]:
+                    flash("You may only assign the User or Admin role", "error")
+                    return redirect(url_for("admin"))
+
+            elif current_user.role != "owner":
+                flash("You do not have permission to change roles", "error")
+                return redirect(url_for("admin"))
+
+            if role not in ["user", "admin", "store_manager", "owner"]:
+                flash("Invalid role", "error")
                 return redirect(url_for("admin"))
 
             cur.execute(
@@ -2078,7 +2107,7 @@ def admin():
 @app.route("/logs", methods=["GET", "POST"])
 @login_required
 def ticket_logs():
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["admin", "store_manager", "owner"]:
         return redirect(url_for("store"))
 
     conn = get_db_connection()
@@ -2324,7 +2353,7 @@ def inject_active_theme():
 @login_required
 def store_orders():
 
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["admin", "store_manager", "owner"]:
         return redirect(url_for("store"))
 
     conn = get_db_connection()

@@ -224,7 +224,7 @@
             </a>
         </div>
 
-        {% if role == "owner" %}
+        {% if role in ["owner", "store_manager"] %}
 
 <!-- ADD STORE CATALOG ITEM -->
 <div class="card">
@@ -385,6 +385,9 @@
     {% endif %}
 
 </div>
+{% endif %}
+
+{% if role == "owner" %}
 
 <!-- DISCORD ORDER NOTIFICATIONS -->
 <div class="card">

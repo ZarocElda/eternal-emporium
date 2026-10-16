@@ -469,21 +469,21 @@
             Purchases
             </a>
 
-            {% if current_user.role in ["admin", "owner"] %}
+            {% if current_user.role in ["admin", "store_manager", "owner"] %}
                 <a href="/admin"
                 class="{% if request.path.startswith('/admin') %}active-nav{% endif %}">
                 Control Panel
                 </a>
             {% endif %}
 
-            {% if current_user.role in ["admin", "owner"] %}
+            {% if current_user.role in ["admin", "store_manager", "owner"] %}
                 <a href="/store_orders"
                 class="{% if request.path.startswith('/store_orders') %}active-nav{% endif %}">
                 Player Store Orders
                 </a>
             {% endif %}
 
-            {% if current_user.role in ["admin", "owner"] %}
+            {% if current_user.role in ["admin", "store_manager", "owner"] %}
                 <a href="/logs"
                 class="{% if request.path.startswith('/logs') %}active-nav{% endif %}">
                 Admin Ticket Updates

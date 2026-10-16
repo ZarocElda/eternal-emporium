@@ -9,7 +9,10 @@
 
 <div class="grid">
 
-{% if is_owner %}
+{% if can_manage_store %}
+<details style="width:100%; margin-bottom:20px;">
+    <summary style="cursor:pointer; font-weight:600;">Manage Store Items</summary>
+
 <div class="card" style="width:320px;">
     <h3>Create Item</h3>
 
@@ -121,6 +124,7 @@
 
     </form>
 </div>
+</details>
 
 {% endif %}
 
@@ -136,7 +140,12 @@
         {% endif %}
     </div>
 
-    {% if is_owner %}
+    {% if can_manage_store %}
+        <details style="margin-bottom:12px;">
+            <summary style="cursor:pointer; font-size:13px; opacity:.7;">
+                Edit This Item
+            </summary>
+
         <form method="post" enctype="multipart/form-data">
             <input name="name" value="{{ item.name }}">
             <input name="cost" value="{{ item.cost }}">
@@ -160,7 +169,8 @@
             Delete
             </button>
         </form>
-    {% else %}
+        </details>
+    {% endif %}
 
         <h3>{{ item.name }}</h3>
         <p style="color:#3b82f6; font-weight:bold;">{{ item.cost }} pts</p>
@@ -200,7 +210,6 @@
             Buy
         </button>
 
-    {% endif %}
 </div>
 {% endfor %}
 </div>
