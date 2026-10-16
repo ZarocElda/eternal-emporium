@@ -10,8 +10,16 @@
 <div class="grid">
 
 {% if can_manage_store %}
-<details style="width:100%; margin-bottom:20px;">
-    <summary style="cursor:pointer; font-weight:600;">Manage Store Items</summary>
+<button
+    id="storeViewToggle"
+    type="button"
+    onclick="toggleStoreView()"
+    style="width:auto; padding:10px 18px; margin-bottom:20px;"
+>
+    Manage Store Items
+</button>
+
+<div id="storeManagementView" style="display:none; margin-bottom:20px;">
 
 <div class="card" style="width:320px;">
     <h3>Create Item</h3>
@@ -124,7 +132,7 @@
 
     </form>
 </div>
-</details>
+</div>
 
 {% endif %}
 
@@ -141,10 +149,7 @@
     </div>
 
     {% if can_manage_store %}
-        <details style="margin-bottom:12px;">
-            <summary style="cursor:pointer; font-size:13px; opacity:.7;">
-                Edit This Item
-            </summary>
+        <div class="management-view" style="display:none;">
 
         <form method="post" enctype="multipart/form-data">
             <input name="name" value="{{ item.name }}">
@@ -169,9 +174,10 @@
             Delete
             </button>
         </form>
-        </details>
+        </div>
     {% endif %}
 
+    <div class="shopping-view">
         <h3>{{ item.name }}</h3>
         <p style="color:#3b82f6; font-weight:bold;">{{ item.cost }} pts</p>
         <p>Stock: {{ item.quantity }}</p>
@@ -209,6 +215,7 @@
         >
             Buy
         </button>
+    </div>
 
 </div>
 {% endfor %}
@@ -334,6 +341,30 @@ function loadCatalogItem() {
     costInput.value = option.dataset.cost;
 }
 
+let managementMode = false;
+
+function toggleStoreView() {
+    managementMode = !managementMode;
+
+    const storeManagement = document.getElementById("storeManagementView");
+    const managementSections = document.querySelectorAll(".management-view");
+    const shoppingSections = document.querySelectorAll(".shopping-view");
+    const toggleButton = document.getElementById("storeViewToggle");
+
+    storeManagement.style.display = managementMode ? "block" : "none";
+
+    managementSections.forEach(section => {
+        section.style.display = managementMode ? "block" : "none";
+    });
+
+    shoppingSections.forEach(section => {
+        section.style.display = managementMode ? "none" : "block";
+    });
+
+    toggleButton.textContent = managementMode
+        ? "Return to Store View"
+        : "Manage Store Items";
+}
 </script>
 
 {% endblock %}
