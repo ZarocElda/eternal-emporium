@@ -3,6 +3,8 @@ print("APP STARTING")
 import os
 import re
 import requests
+import hashlib
+from pathlib import Path
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
 from dotenv import load_dotenv
@@ -12,19 +14,26 @@ import pytz
 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from config import load_settings
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-print("DATABASE_URL =", DATABASE_URL)
+settings = load_settings()
+DATABASE_URL = settings.database_url
 
 if not DATABASE_URL:
-    raise Exception("DAfTABASE_URL is NOT set.")
+    raise RuntimeError("DATABASE_URL is not set.")
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = settings.secret_key
+app.config.update(
+    APP_ENV=settings.app_env,
+    INITIALIZE_DATABASE=settings.initialize_database,
+    RUN_DB_MIGRATIONS=settings.run_db_migrations,
+    LEGACY_SCHEMA_BOOTSTRAP=settings.legacy_schema_bootstrap,
+)
 app.permanent_session_lifetime = timedelta(minutes=15)
 
 login_manager = LoginManager()
@@ -34,6 +43,58 @@ login_manager.login_view = "login"
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
+
+
+def run_database_migrations():
+    """Apply versioned SQL files exactly once and reject edited migrations."""
+    migrations_dir = Path(__file__).with_name("migrations")
+    if not migrations_dir.exists():
+        return
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    filename VARCHAR(255) PRIMARY KEY,
+                    checksum VARCHAR(64) NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+            for migration_path in sorted(migrations_dir.glob("*.sql")):
+                sql = migration_path.read_text(encoding="utf-8")
+                checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+
+                cur.execute(
+                    "SELECT checksum FROM schema_migrations WHERE filename = %s",
+                    (migration_path.name,),
+                )
+                applied = cur.fetchone()
+
+                if applied:
+                    if applied[0] != checksum:
+                        raise RuntimeError(
+                            f"Applied migration was modified: {migration_path.name}"
+                        )
+                    continue
+
+                try:
+                    cur.execute(sql)
+                    cur.execute(
+                        """
+                        INSERT INTO schema_migrations (filename, checksum)
+                        VALUES (%s, %s)
+                        """,
+                        (migration_path.name, checksum),
+                    )
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
+    finally:
+        conn.close()
 
 def send_discord_order_notification(username, rsn, item_name, quantity, total_cost, discord_ids=None):
     if not DISCORD_WEBHOOK_URL:
@@ -2603,14 +2664,21 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-ensure_discord_notification_table()
-ensure_item_catalog_table()
-ensure_store_image_columns()
-ensure_profile_picture_column()
-ensure_profile_picture_data_column()
-ensure_theme_tables()
-ensure_theme_text_columns()
-ensure_password_security_columns()
+if app.config["INITIALIZE_DATABASE"]:
+    if app.config["RUN_DB_MIGRATIONS"]:
+        run_database_migrations()
+
+    # Preserve the existing production bootstrap until each legacy table has
+    # been captured in a versioned migration.
+    if app.config["LEGACY_SCHEMA_BOOTSTRAP"]:
+        ensure_discord_notification_table()
+        ensure_item_catalog_table()
+        ensure_store_image_columns()
+        ensure_profile_picture_column()
+        ensure_profile_picture_data_column()
+        ensure_theme_tables()
+        ensure_theme_text_columns()
+        ensure_password_security_columns()
 
 if __name__ == "__main__":
     app.run(debug=True)
