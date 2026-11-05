@@ -1,6 +1,7 @@
 print("APP STARTING")
 
 import os
+import re
 import requests
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
@@ -289,19 +290,81 @@ def ensure_theme_text_columns():
     cur.close()
     conn.close()
 
+
+def ensure_password_security_columns():
+    """Add password-upgrade state and flag existing elevated accounts once."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_migrations (
+            name VARCHAR(100) PRIMARY KEY,
+            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        INSERT INTO app_migrations (name)
+        VALUES (%s)
+        ON CONFLICT (name) DO NOTHING
+        RETURNING name
+    """, ("require_elevated_password_v1",))
+
+    if cur.fetchone():
+        cur.execute("""
+            UPDATE users
+            SET must_change_password = TRUE
+            WHERE role IN ('admin', 'store_manager', 'owner')
+        """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+ELEVATED_ROLES = {"admin", "store_manager", "owner"}
+ROLE_LEVELS = {"user": 0, "admin": 1, "store_manager": 2, "owner": 3}
+
+
+def valid_elevated_password(password):
+    return (
+        len(password) >= 5
+        and re.search(r"[A-Za-z]", password)
+        and re.search(r"\d", password)
+        and re.search(r"[^A-Za-z0-9\s]", password)
+    )
+
+
+def credential_matches(stored_password, supplied_password):
+    if not stored_password:
+        return False
+
+    if stored_password.startswith(("scrypt:", "pbkdf2:", "argon2:")):
+        return check_password_hash(stored_password, supplied_password)
+
+    return stored_password == supplied_password
+
 class User(UserMixin):
-    def __init__(self, id, username, password, role):
+    def __init__(self, id, username, password, role, must_change_password=False):
         self.id = id
         self.username = username
         self.password = password
         self.role = role
+        self.must_change_password = must_change_password
 
 
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, username, password, role FROM users WHERE id = %s", (user_id,))
+    cur.execute("""
+        SELECT id, username, password, role, must_change_password
+        FROM users
+        WHERE id = %s
+    """, (user_id,))
     user = cur.fetchone()
     cur.close()
     conn.close()
@@ -364,25 +427,96 @@ def login():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id, username, password, role FROM users WHERE username = %s",
-            (username,)
-        )
+        cur.execute("""
+            SELECT id, username, password, role, must_change_password
+            FROM users
+            WHERE username = %s
+        """, (username,))
         user = cur.fetchone()
 
         cur.close()
         conn.close()
 
-        if user and user[2] == password:
+        if user and credential_matches(user[2], password):
             from flask import session
             session.permanent = True
             login_user(User(*user))
+            if user[4]:
+                return redirect(url_for("change_password"))
             return redirect(url_for("store"))
 
         flash("Invalid credentials", "error")
         return render_template("login.html")
 
     return render_template("login.html")
+
+
+@app.before_request
+def enforce_required_password_change():
+    if not current_user.is_authenticated or not current_user.must_change_password:
+        return None
+
+    allowed_endpoints = {
+        "change_password", "logout", "static", "theme_logo_image",
+        "theme_banner_image", "theme_background_image"
+    }
+    if request.endpoint not in allowed_endpoints:
+        return redirect(url_for("change_password"))
+
+    return None
+
+
+@app.route("/change_password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT password FROM users WHERE id = %s", (current_user.id,))
+        row = cur.fetchone()
+
+        if not row or not credential_matches(row[0], current_password):
+            cur.close()
+            conn.close()
+            flash("Current PIN or password is incorrect", "error")
+            return redirect(url_for("change_password"))
+
+        if new_password != confirm_password:
+            cur.close()
+            conn.close()
+            flash("New passwords do not match", "error")
+            return redirect(url_for("change_password"))
+
+        if current_user.role in ELEVATED_ROLES:
+            if not valid_elevated_password(new_password):
+                cur.close()
+                conn.close()
+                flash("Password must be at least 5 characters and include a letter, number, and special character", "error")
+                return redirect(url_for("change_password"))
+        elif len(new_password) != 4 or not new_password.isdigit():
+            cur.close()
+            conn.close()
+            flash("PIN must be 4 digits", "error")
+            return redirect(url_for("change_password"))
+
+        cur.execute("""
+            UPDATE users
+            SET password = %s, pin = %s, must_change_password = FALSE
+            WHERE id = %s
+        """, (generate_password_hash(new_password), new_password, current_user.id))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        current_user.must_change_password = False
+        flash("Password updated successfully", "success")
+        return redirect(url_for("store"))
+
+    return render_template("change_password.html")
 
 
 # ================= DASHBOARD =================
@@ -838,15 +972,21 @@ def profile():
                 conn.close()
                 return redirect(url_for("profile"))
 
-            if len(new_pin) != 4 or not new_pin.isdigit():
+            if current_user.role in ELEVATED_ROLES and not valid_elevated_password(new_pin):
+                flash("Password must be at least 5 characters and include a letter, number, and special character", "error")
+                cur.close()
+                conn.close()
+                return redirect(url_for("profile"))
+
+            if current_user.role not in ELEVATED_ROLES and (len(new_pin) != 4 or not new_pin.isdigit()):
                 flash("PIN must be 4 digits", "error")
                 cur.close()
                 conn.close()
                 return redirect(url_for("profile"))
 
             cur.execute(
-                "UPDATE users SET pin = %s, password = %s WHERE id = %s",
-                (new_pin, new_pin, current_user.id)
+                "UPDATE users SET pin = %s, password = %s, must_change_password = FALSE WHERE id = %s",
+                (new_pin, generate_password_hash(new_pin), current_user.id)
             )
 
             conn.commit()
@@ -2045,21 +2185,39 @@ def admin():
                 flash("Invalid role", "error")
                 return redirect(url_for("admin"))
 
-            cur.execute(
-                "UPDATE users SET role = %s WHERE id = %s",
-                (role, user_id)
-            )
+            must_change = role in ELEVATED_ROLES and target_role == "user"
+            cur.execute("""
+                UPDATE users
+                SET role = %s,
+                    must_change_password = CASE
+                        WHEN %s THEN TRUE
+                        WHEN %s = 'user' THEN FALSE
+                        ELSE must_change_password
+                    END
+                WHERE id = %s
+            """, (role, must_change, role, user_id))
 
         # SET PIN
         if action == "set_pin":
 
-            if len(new_pin) != 4 or not new_pin.isdigit():
+            cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+            target = cur.fetchone()
+
+            if not target:
+                flash("User not found", "error")
+                return redirect(url_for("admin"))
+
+            if target[0] in ELEVATED_ROLES and not valid_elevated_password(new_pin):
+                flash("Elevated passwords need at least 5 characters with a letter, number, and special character", "error")
+                return redirect(url_for("admin"))
+
+            if target[0] not in ELEVATED_ROLES and (len(new_pin) != 4 or not new_pin.isdigit()):
                 flash("PIN must be 4 digits", "error")
                 return redirect(url_for("admin"))
 
             cur.execute(
                 "UPDATE users SET pin = %s, password = %s WHERE id = %s",
-                (new_pin, new_pin, user_id)
+                (new_pin, generate_password_hash(new_pin), user_id)
             )
 
         # RESET PIN
@@ -2075,8 +2233,23 @@ def admin():
 
         # DELETE
         if action == "delete":
-            if current_user.role != "owner":
-                flash("Only owners can delete users", "error")
+            if int(user_id) == int(current_user.id):
+                flash("You cannot delete your own account", "error")
+                return redirect(url_for("admin"))
+
+            cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+            target = cur.fetchone()
+
+            if not target:
+                flash("User not found", "error")
+                return redirect(url_for("admin"))
+
+            if current_user.role == "store_manager" and target[0] not in ["admin", "user"]:
+                flash("Store Managers may only delete Admin and User accounts", "error")
+                return redirect(url_for("admin"))
+
+            if current_user.role not in ["owner", "store_manager"]:
+                flash("You do not have permission to delete accounts", "error")
                 return redirect(url_for("admin"))
 
             cur.execute(
@@ -2096,7 +2269,14 @@ def admin():
         FROM users
         ORDER BY id ASC
     """)
-    users = cur.fetchall()
+    user_rows = cur.fetchall()
+
+    viewer_level = ROLE_LEVELS[current_user.role]
+    users = []
+    for user in user_rows:
+        target_level = ROLE_LEVELS.get(user[4], 99)
+        displayed_credential = user[5] if viewer_level >= target_level else "Hidden"
+        users.append(user[:5] + (displayed_credential,) + user[6:])
 
     cur.close()
     conn.close()
@@ -2420,6 +2600,7 @@ ensure_profile_picture_column()
 ensure_profile_picture_data_column()
 ensure_theme_tables()
 ensure_theme_text_columns()
+ensure_password_security_columns()
 
 if __name__ == "__main__":
     app.run(debug=True)

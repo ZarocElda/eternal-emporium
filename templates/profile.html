@@ -170,7 +170,7 @@
             </button>
 
             <button onclick="openPinModal()" style="margin-top:8px; width:100%;">
-                Change PIN
+                Change {% if role in ["admin", "store_manager", "owner"] %}Password{% else %}PIN{% endif %}
             </button>
 
         </div>
@@ -614,27 +614,27 @@
             cursor:pointer;
         ">×</button>
 
-        <h3>Change PIN</h3>
+        <h3>{% if role in ["admin", "store_manager", "owner"] %}Change Password{% else %}Change PIN{% endif %}</h3>
 
         <form method="post">
 
             <div style="margin-top:10px;">
-                <label style="font-size:12px; opacity:.7;">Current PIN</label>
-                <input name="current_pin" required style="width:100%; max-width:260px;">
+                <label style="font-size:12px; opacity:.7;">Current PIN or Password</label>
+                <input type="password" name="current_pin" required style="width:100%; max-width:260px;">
             </div>
 
             <div style="margin-top:10px; display:flex; flex-direction:column;">
-                <label style="font-size:12px; opacity:.7; margin-bottom:4px;">New PIN</label>
-                <input name="new_pin" required style="width:100%; max-width:260px;">
+                <label style="font-size:12px; opacity:.7; margin-bottom:4px;">New {% if role in ["admin", "store_manager", "owner"] %}Password{% else %}PIN{% endif %}</label>
+                <input type="password" name="new_pin" required style="width:100%; max-width:260px;">
             </div>
 
             <div style="margin-top:10px;">
-                <label style="font-size:12px; opacity:.7;">Confirm New PIN</label>
-                <input name="confirm_pin" required style="width:100%; max-width:260px;">
+                <label style="font-size:12px; opacity:.7;">Confirm New {% if role in ["admin", "store_manager", "owner"] %}Password{% else %}PIN{% endif %}</label>
+                <input type="password" name="confirm_pin" required style="width:100%; max-width:260px;">
             </div>
 
             <button style="margin-top:15px; width:100%;">
-                Update PIN
+                Update {% if role in ["admin", "store_manager", "owner"] %}Password{% else %}PIN{% endif %}
             </button>
 
         </form>
