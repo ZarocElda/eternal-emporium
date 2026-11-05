@@ -301,6 +301,16 @@ def ensure_password_security_columns():
         ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
     """)
     cur.execute("""
+        ALTER TABLE users
+        ALTER COLUMN password TYPE TEXT
+        USING password::text
+    """)
+    cur.execute("""
+        ALTER TABLE users
+        ALTER COLUMN pin TYPE TEXT
+        USING pin::text
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS app_migrations (
             name VARCHAR(100) PRIMARY KEY,
             applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
