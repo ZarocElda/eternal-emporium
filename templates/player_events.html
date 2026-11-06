@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="margin-bottom:24px;"><h2 style="margin-bottom:5px;">Events</h2><p style="opacity:.65; margin:0;">Active public adventures and your saved progress.</p></div>
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px;">
+{% for event in events %}
+<a href="{{ url_for('player_event', slug=event[2]) }}" style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:20px; color:var(--theme-text); text-decoration:none;">
+    <small style="color:var(--theme-accent); text-transform:uppercase;">{% if event[7] %}Completed{% elif event[6] %}Continue adventure{% else %}New event{% endif %}</small>
+    <h3 style="margin:8px 0;">{{ event[1] }}</h3><p style="opacity:.7;">{{ event[3] or 'A new challenge awaits.' }}</p>
+    <strong style="color:var(--theme-primary);">{{ 'View results' if event[7] else 'Enter event' }} →</strong>
+</a>
+{% else %}<div style="padding:35px; border:1px dashed var(--theme-border); border-radius:12px; text-align:center; opacity:.7;">No public events are open right now. Hidden events must be discovered elsewhere in the Emporium.</div>{% endfor %}
+</div>
+{% endblock %}

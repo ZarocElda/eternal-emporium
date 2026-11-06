@@ -24,7 +24,7 @@
     <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:20px; display:grid; gap:14px;">
         <h3 style="margin:0;">Puzzle configuration</h3>
         <div id="answer-fields"><label>Accepted answers <small style="opacity:.6;">one per line</small><textarea name="accepted_answers" rows="4">{{ solution.get('accepted_answers', [])|join('\n') }}</textarea></label></div>
-        <div id="option-fields"><label>Choices or movable items <small style="opacity:.6;">one per line; optional</small><textarea name="options" rows="4">{{ content.get('options', [])|join('\n') }}</textarea></label></div>
+        <div id="option-fields"><label>Choices or shuffled ordering items <small style="opacity:.6;">one per line</small><textarea name="options" rows="4">{{ content.get('options', [])|join('\n') }}</textarea></label></div>
         <div id="ordering-fields"><label>Correct order <small style="opacity:.6;">one item per line</small><textarea name="correct_order" rows="5">{{ solution.get('correct_order', [])|join('\n') }}</textarea></label></div>
         <div id="hotspot-fields" style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;">
             {% set hotspot = solution.get('hotspot', {}) %}

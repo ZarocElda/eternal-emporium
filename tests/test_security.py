@@ -11,8 +11,11 @@ from app import (
     build_puzzle_configuration,
     credential_matches,
     event_slug,
+    event_is_open,
     nonempty_lines,
+    normalize_puzzle_answer,
     parse_event_datetime,
+    puzzle_answer_is_correct,
     role_can_manage_events,
     valid_elevated_password,
 )
@@ -82,6 +85,47 @@ class SecurityTests(unittest.TestCase):
                 "hotspot_y": "20", "hotspot_radius": "8",
                 "hint_1": "", "hint_2": "", "hint_3": "",
             })
+
+    def test_player_answer_validation(self):
+        self.assertEqual(normalize_puzzle_answer("  Loyal   Friend "), "loyal friend")
+        self.assertTrue(puzzle_answer_is_correct(
+            "trivia", {"accepted_answers": ["Loyalty", "Loyal"]}, " loyalty "
+        ))
+        self.assertFalse(puzzle_answer_is_correct(
+            "trivia", {"accepted_answers": ["Loyalty"]}, "strength"
+        ))
+        self.assertTrue(puzzle_answer_is_correct(
+            "ordering", {"correct_order": ["One", "Two"]},
+            ordered_items=[" one ", "TWO"]
+        ))
+        self.assertTrue(puzzle_answer_is_correct(
+            "image_hotspot", {"hotspot": {"x": 50, "y": 50, "radius": 10}},
+            hotspot=(55, 54)
+        ))
+        self.assertFalse(puzzle_answer_is_correct(
+            "image_hotspot", {"hotspot": {"x": 50, "y": 50, "radius": 5}},
+            hotspot=(80, 80)
+        ))
+
+    def test_ordering_builder_requires_shuffled_items(self):
+        form = {
+            "puzzle_type": "ordering", "instructions": "", "hidden_location": "",
+            "options": "Two\nOne", "correct_order": "One\nTwo",
+            "hint_1": "", "hint_2": "", "hint_3": "",
+        }
+        _, content, solution, _ = build_puzzle_configuration(form)
+        self.assertEqual(content["options"], ["Two", "One"])
+        self.assertEqual(solution["correct_order"], ["One", "Two"])
+        form["options"] = "One\nThree"
+        with self.assertRaises(ValueError):
+            build_puzzle_configuration(form)
+
+    def test_event_availability(self):
+        from datetime import datetime, timedelta
+        now = datetime(2027, 2, 1, 12, 0)
+        self.assertTrue(event_is_open("published", now - timedelta(hours=1), now + timedelta(hours=1), now))
+        self.assertFalse(event_is_open("draft", None, None, now))
+        self.assertFalse(event_is_open("scheduled", now + timedelta(hours=1), None, now))
 
 
 if __name__ == "__main__":

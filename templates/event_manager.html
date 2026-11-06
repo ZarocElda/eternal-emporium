@@ -30,7 +30,7 @@
             </div>
             <div style="opacity:.65; margin-top:8px; font-size:13px;">{{ event[8] }} stages · {{ event[9] }} puzzles{% if event[5] %} · Starts {{ event[5].strftime('%m/%d/%Y %I:%M %p') }}{% endif %}</div>
         </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;"><a href="{{ url_for('preview_event', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Preview</a><a href="{{ url_for('event_builder', event_id=event[0]) }}" style="color:var(--theme-primary); font-weight:600; text-decoration:none;">Builder</a><a href="{{ url_for('edit_event', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Settings →</a></div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;"><a href="{{ url_for('event_clue_placements', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Clues</a><a href="{{ url_for('event_completions_manager', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Completions</a><a href="{{ url_for('preview_event', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Preview</a><a href="{{ url_for('event_builder', event_id=event[0]) }}" style="color:var(--theme-primary); font-weight:600; text-decoration:none;">Builder</a><a href="{{ url_for('edit_event', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">Settings →</a></div>
     </div>
     {% endfor %}
 </div>

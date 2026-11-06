@@ -4,6 +4,7 @@ import os
 import re
 import requests
 import hashlib
+import math
 from pathlib import Path
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
@@ -450,9 +451,14 @@ def build_puzzle_configuration(form):
 
     if puzzle_type == "ordering":
         correct_order = nonempty_lines(form.get("correct_order", ""))
+        options = nonempty_lines(form.get("options", ""))
         if len(correct_order) < 2:
             raise ValueError("Ordering puzzles need at least two items")
-        content["options"] = nonempty_lines(form.get("options", "")) or correct_order
+        if len(options) < 2:
+            raise ValueError("Add the ordering items in a shuffled display order")
+        if sorted(normalize_puzzle_answer(item) for item in options) != sorted(normalize_puzzle_answer(item) for item in correct_order):
+            raise ValueError("The display items and correct order must contain the same items")
+        content["options"] = options
         solution["correct_order"] = correct_order
     elif puzzle_type == "image_hotspot":
         try:
@@ -478,6 +484,53 @@ def build_puzzle_configuration(form):
         ) if hint
     ]
     return puzzle_type, content, solution, hints
+
+
+def normalize_puzzle_answer(value):
+    return re.sub(r"\s+", " ", (value or "").strip().casefold())
+
+
+def puzzle_answer_is_correct(puzzle_type, solution, submitted_answer=None, ordered_items=None, hotspot=None):
+    if puzzle_type == "ordering":
+        expected = [normalize_puzzle_answer(item) for item in solution.get("correct_order", [])]
+        actual = [normalize_puzzle_answer(item) for item in (ordered_items or []) if item.strip()]
+        return bool(expected) and actual == expected
+    if puzzle_type == "image_hotspot":
+        target = solution.get("hotspot", {})
+        if not hotspot or not target:
+            return False
+        try:
+            distance = math.hypot(float(hotspot[0]) - float(target["x"]), float(hotspot[1]) - float(target["y"]))
+            return distance <= float(target.get("radius", 8))
+        except (TypeError, ValueError, KeyError):
+            return False
+    answer = normalize_puzzle_answer(submitted_answer)
+    accepted = {normalize_puzzle_answer(item) for item in solution.get("accepted_answers", [])}
+    return bool(answer) and answer in accepted
+
+
+def event_is_open(status, starts_at, ends_at, now=None):
+    now = now or datetime.now()
+    if status not in {"published", "scheduled"}:
+        return False
+    if starts_at and now < starts_at:
+        return False
+    if ends_at and now >= ends_at:
+        return False
+    return True
+
+
+def request_page_scope():
+    path = request.path
+    if path.startswith("/store"):
+        return "store"
+    if path.startswith("/dashboard"):
+        return "dashboard"
+    if path.startswith("/profile"):
+        return "profile"
+    if path.startswith("/purchases"):
+        return "purchases"
+    return None
 
 
 def valid_elevated_password(password):
@@ -2116,6 +2169,86 @@ def get_managed_event(cur, event_id):
     return cur.fetchone()
 
 
+def get_player_event(cur, slug):
+    cur.execute("""
+        SELECT id, title, slug, summary, description, status, visibility,
+               starts_at, ends_at, max_hints
+        FROM events WHERE slug = %s
+    """, (slug,))
+    return cur.fetchone()
+
+
+def get_or_create_participation(cur, event_id, user_id):
+    cur.execute("""
+        INSERT INTO event_participations (event_id, user_id)
+        VALUES (%s, %s)
+        ON CONFLICT (event_id, user_id) DO UPDATE
+        SET last_activity_at = CURRENT_TIMESTAMP
+        RETURNING id, started_at, completed_at
+    """, (event_id, user_id))
+    return cur.fetchone()
+
+
+def ordered_event_puzzles(cur, event_id):
+    cur.execute("""
+        SELECT p.id, p.stage_id, s.position, s.title, s.description,
+               p.position, p.title, p.puzzle_type, p.prompt, p.content,
+               p.solution, p.hints,
+               EXISTS(SELECT 1 FROM event_puzzle_assets a WHERE a.puzzle_id = p.id)
+        FROM event_puzzles p
+        JOIN event_stages s ON s.id = p.stage_id
+        WHERE s.event_id = %s AND p.is_active = TRUE
+        ORDER BY s.position, p.position
+    """, (event_id,))
+    return cur.fetchall()
+
+
+def finish_event(cur, event, participation, user_id, grant_rewards=True):
+    cur.execute("""
+        UPDATE event_participations
+        SET completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP),
+            last_activity_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    """, (participation[0],))
+    cur.execute("""
+        SELECT COUNT(*) FROM event_hint_usage WHERE participation_id = %s
+    """, (participation[0],))
+    hints_used = cur.fetchone()[0]
+    cur.execute("""
+        INSERT INTO event_completions (
+            event_id, user_id, participation_id, elapsed_seconds, hints_used
+        ) VALUES (
+            %s, %s, %s,
+            GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - %s))::INTEGER), %s
+        )
+        ON CONFLICT (event_id, user_id) DO NOTHING
+        RETURNING id
+    """, (event[0], user_id, participation[0], participation[1], hints_used))
+    completion = cur.fetchone()
+    if not completion:
+        return False
+    if not grant_rewards:
+        return True
+
+    cur.execute("""
+        SELECT id, reward_type, points_amount FROM event_rewards WHERE event_id = %s
+    """, (event[0],))
+    for reward_id, reward_type, points_amount in cur.fetchall():
+        fulfillment = "pending" if reward_type == "manual_prize" else "not_applicable"
+        points = points_amount or 0 if reward_type == "points" else 0
+        cur.execute("""
+            INSERT INTO event_reward_grants (
+                event_id, user_id, completion_id, reward_id,
+                points_granted, fulfillment_status
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, event_id, reward_id) DO NOTHING
+            RETURNING id
+        """, (event[0], user_id, completion[0], reward_id, points, fulfillment))
+        if cur.fetchone() and points:
+            cur.execute("UPDATE users SET points = points + %s WHERE id = %s", (points, user_id))
+    return True
+
+
 @app.route("/events/manage/<int:event_id>/builder", methods=["GET", "POST"])
 @login_required
 def event_builder(event_id):
@@ -2332,19 +2465,23 @@ def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
 @app.route("/event_puzzle_asset/<int:puzzle_id>")
 @login_required
 def event_puzzle_asset(puzzle_id):
-    if not role_can_manage_events(current_user.role):
-        return redirect(url_for("store"))
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT data, content_type FROM event_puzzle_assets
-        WHERE puzzle_id = %s AND asset_kind = 'image'
+        SELECT a.data, a.content_type, e.status, e.starts_at, e.ends_at
+        FROM event_puzzle_assets a
+        JOIN event_puzzles p ON p.id = a.puzzle_id
+        JOIN event_stages s ON s.id = p.stage_id
+        JOIN events e ON e.id = s.event_id
+        WHERE a.puzzle_id = %s AND a.asset_kind = 'image'
     """, (puzzle_id,))
     asset = cur.fetchone()
     cur.close()
     conn.close()
     if not asset:
         return render_template("error.html", message="Puzzle image not found"), 404
+    if not role_can_manage_events(current_user.role) and not event_is_open(asset[2], asset[3], asset[4]):
+        return render_template("error.html", message="Puzzle image not available"), 403
     return Response(bytes(asset[0]), mimetype=asset[1])
 
 
@@ -2382,6 +2519,393 @@ def preview_event(event_id):
         "event_preview.html", event=event, stages=stages,
         puzzles_by_stage=puzzles_by_stage, puzzle_types=PUZZLE_TYPES,
     )
+
+
+@app.route("/events/manage/<int:event_id>/placements", methods=["GET", "POST"])
+@login_required
+def event_clue_placements(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+    if request.method == "POST":
+        try:
+            if request.form.get("action") == "delete":
+                placement_id = int(request.form.get("placement_id", 0))
+                cur.execute("DELETE FROM event_clue_placements WHERE id = %s AND event_id = %s", (placement_id, event_id))
+                flash("Clue placement removed", "success")
+            else:
+                name = request.form.get("name", "").strip()
+                page_scope = request.form.get("page_scope", "store")
+                zone = request.form.get("placement_zone", "content_top")
+                display_type = request.form.get("display_type", "text")
+                starts_raw = request.form.get("starts_at", "")
+                ends_raw = request.form.get("ends_at", "")
+                starts_at = parse_event_datetime(starts_raw)
+                ends_at = parse_event_datetime(ends_raw)
+                if not name:
+                    raise ValueError("Placement name is required")
+                if page_scope not in {"global", "store", "dashboard", "profile", "purchases"}:
+                    raise ValueError("Choose a valid website page")
+                if zone not in {"content_top", "theme_banner_hotspot", "floating_corner", "footer"}:
+                    raise ValueError("Choose a valid placement zone")
+                if display_type not in {"text", "image", "invisible_hotspot"}:
+                    raise ValueError("Choose a valid clue appearance")
+                if (starts_raw and starts_at is None) or (ends_raw and ends_at is None):
+                    raise ValueError("Enter valid placement dates")
+                if starts_at and ends_at and ends_at <= starts_at:
+                    raise ValueError("Placement end must be after its start")
+                x = float(request.form.get("position_x", 50))
+                y = float(request.form.get("position_y", 50))
+                width = float(request.form.get("width_percent", 12))
+                height = float(request.form.get("height_percent", 18))
+                if not 0 <= x <= 100 or not 0 <= y <= 100 or not 1 <= width <= 100 or not 1 <= height <= 100:
+                    raise ValueError("Placement position or size is outside the page")
+                image = request.files.get("clue_image")
+                image_data = None
+                if image and image.filename:
+                    extension = os.path.splitext(image.filename)[1].lower()
+                    if extension not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+                        raise ValueError("Clue images must be JPG, PNG, WEBP, or GIF")
+                    image_data = image.read(5 * 1024 * 1024 + 1)
+                    if len(image_data) > 5 * 1024 * 1024:
+                        raise ValueError("Clue images must be 5 MB or smaller")
+                if display_type == "image" and image_data is None:
+                    raise ValueError("Image clues need an uploaded image")
+                cur.execute("""
+                    INSERT INTO event_clue_placements (
+                        event_id, name, page_scope, placement_zone, display_type,
+                        label, tooltip, position_x, position_y, width_percent,
+                        height_percent, image_filename, image_content_type, image_data,
+                        starts_at, ends_at, is_active, created_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                              %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    event_id, name, page_scope, zone, display_type,
+                    request.form.get("label", "").strip() or None,
+                    request.form.get("tooltip", "").strip() or None,
+                    x, y, width, height,
+                    os.path.basename(image.filename) if image_data else None,
+                    image.mimetype if image_data else None,
+                    psycopg2.Binary(image_data) if image_data else None,
+                    starts_at, ends_at, request.form.get("is_active") == "on",
+                    current_user.id,
+                ))
+                flash("Website clue placement created", "success")
+            conn.commit()
+        except (ValueError, TypeError) as exc:
+            conn.rollback()
+            flash(str(exc), "error")
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("event_clue_placements", event_id=event_id))
+    cur.execute("""
+        SELECT id, name, page_scope, placement_zone, display_type, label,
+               starts_at, ends_at, is_active, image_data IS NOT NULL
+        FROM event_clue_placements WHERE event_id = %s
+        ORDER BY created_at DESC
+    """, (event_id,))
+    placements = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("event_clue_placements.html", event=event, placements=placements)
+
+
+@app.route("/event_clue_image/<int:placement_id>")
+@login_required
+def event_clue_image(placement_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT image_data, image_content_type FROM event_clue_placements WHERE id = %s", (placement_id,))
+    image = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not image or not image[0]:
+        return render_template("error.html", message="Clue image not found"), 404
+    return Response(bytes(image[0]), mimetype=image[1])
+
+
+@app.route("/events/manage/<int:event_id>/completions", methods=["GET", "POST"])
+@login_required
+def event_completions_manager(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+    if request.method == "POST":
+        try:
+            grant_id = int(request.form.get("grant_id", 0))
+            cur.execute("""
+                UPDATE event_reward_grants g
+                SET fulfillment_status = 'fulfilled', fulfilled_by = %s,
+                    fulfilled_at = CURRENT_TIMESTAMP
+                FROM event_rewards r
+                WHERE g.id = %s AND g.event_id = %s
+                  AND r.id = g.reward_id AND r.reward_type = 'manual_prize'
+            """, (current_user.id, grant_id, event_id))
+            if cur.rowcount != 1:
+                raise ValueError("Manual prize grant not found")
+            conn.commit()
+            flash("Manual prize marked fulfilled", "success")
+        except (ValueError, TypeError) as exc:
+            conn.rollback()
+            flash(str(exc), "error")
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("event_completions_manager", event_id=event_id))
+    cur.execute("""
+        SELECT c.id, u.username, c.completed_at, c.elapsed_seconds, c.hints_used,
+               COALESCE(SUM(g.points_granted), 0),
+               MAX(CASE WHEN r.reward_type = 'manual_prize' THEN g.fulfillment_status END),
+               MAX(CASE WHEN r.reward_type = 'manual_prize' THEN g.id END),
+               MAX(CASE WHEN r.reward_type = 'manual_prize' THEN r.prize_name END)
+        FROM event_completions c
+        JOIN users u ON u.id = c.user_id
+        LEFT JOIN event_reward_grants g ON g.completion_id = c.id
+        LEFT JOIN event_rewards r ON r.id = g.reward_id
+        WHERE c.event_id = %s
+        GROUP BY c.id, u.username
+        ORDER BY c.completed_at
+    """, (event_id,))
+    completions = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("event_completions_manager.html", event=event, completions=completions)
+
+
+@app.route("/events")
+@login_required
+def player_events():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT e.id, e.title, e.slug, e.summary, e.starts_at, e.ends_at,
+               ep.started_at, ep.completed_at
+        FROM events e
+        LEFT JOIN event_participations ep
+          ON ep.event_id = e.id AND ep.user_id = %s
+        WHERE e.visibility = 'public'
+          AND e.status IN ('published', 'scheduled')
+          AND (e.starts_at IS NULL OR e.starts_at <= CURRENT_TIMESTAMP)
+          AND (e.ends_at IS NULL OR e.ends_at > CURRENT_TIMESTAMP)
+        ORDER BY e.starts_at NULLS FIRST, e.title
+    """, (current_user.id,))
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("player_events.html", events=events)
+
+
+@app.route("/events/<slug>")
+@login_required
+def player_event(slug):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_player_event(cur, slug)
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+    manager_preview = role_can_manage_events(current_user.role)
+    if not event_is_open(event[5], event[7], event[8]) and not manager_preview:
+        cur.close()
+        conn.close()
+        return render_template("event_unavailable.html", event=event), 403
+
+    participation = get_or_create_participation(cur, event[0], current_user.id)
+    puzzles = ordered_event_puzzles(cur, event[0])
+    cur.execute("""
+        SELECT puzzle_id, solved_at, attempt_count
+        FROM event_puzzle_progress WHERE participation_id = %s
+    """, (participation[0],))
+    progress = {row[0]: row[1:] for row in cur.fetchall()}
+    active_puzzle = next((puzzle for puzzle in puzzles if not progress.get(puzzle[0], (None,))[0]), None)
+
+    if puzzles and active_puzzle is None and not participation[2]:
+        finish_event(
+            cur, event, participation, current_user.id,
+            grant_rewards=event_is_open(event[5], event[7], event[8]),
+        )
+        participation = (participation[0], participation[1], datetime.now())
+
+    cur.execute("""
+        SELECT body, created_at FROM event_journal_entries
+        WHERE participation_id = %s ORDER BY created_at DESC LIMIT 20
+    """, (participation[0],))
+    journal_entries = cur.fetchall()
+    used_hints = set()
+    if active_puzzle:
+        cur.execute("""
+            SELECT hint_number FROM event_hint_usage
+            WHERE participation_id = %s AND puzzle_id = %s
+        """, (participation[0], active_puzzle[0]))
+        used_hints = {row[0] for row in cur.fetchall()}
+    cur.execute("""
+        SELECT u.username, c.elapsed_seconds, c.hints_used
+        FROM event_completions c JOIN users u ON u.id = c.user_id
+        WHERE c.event_id = %s
+        ORDER BY c.elapsed_seconds ASC NULLS LAST, c.hints_used ASC, c.completed_at ASC
+        LIMIT 10
+    """, (event[0],))
+    leaderboard = cur.fetchall()
+    conn.commit()
+    cur.close()
+    conn.close()
+    solved_count = sum(1 for puzzle in puzzles if progress.get(puzzle[0], (None,))[0])
+    return render_template(
+        "player_event.html", event=event, participation=participation,
+        puzzles=puzzles, progress=progress, active_puzzle=active_puzzle,
+        solved_count=solved_count, journal_entries=journal_entries,
+        used_hints=used_hints, leaderboard=leaderboard,
+        manager_preview=manager_preview and not event_is_open(event[5], event[7], event[8]),
+    )
+
+
+@app.route("/events/<slug>/answer", methods=["POST"])
+@login_required
+def answer_event_puzzle(slug):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        event = get_player_event(cur, slug)
+        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role)):
+            flash("This event is not currently available", "error")
+            return redirect(url_for("player_events"))
+        participation = get_or_create_participation(cur, event[0], current_user.id)
+        puzzles = ordered_event_puzzles(cur, event[0])
+        cur.execute("SELECT puzzle_id, solved_at FROM event_puzzle_progress WHERE participation_id = %s", (participation[0],))
+        progress = {row[0]: row[1] for row in cur.fetchall()}
+        active = next((puzzle for puzzle in puzzles if not progress.get(puzzle[0])), None)
+        submitted_id = int(request.form.get("puzzle_id", 0))
+        if not active or active[0] != submitted_id:
+            flash("That puzzle is not currently unlocked", "error")
+            return redirect(url_for("player_event", slug=slug))
+
+        ordered_items = nonempty_lines(request.form.get("ordered_items", ""))
+        hotspot = None
+        if request.form.get("hotspot_x") and request.form.get("hotspot_y"):
+            hotspot = (request.form.get("hotspot_x"), request.form.get("hotspot_y"))
+        correct = puzzle_answer_is_correct(
+            active[7], active[10], request.form.get("answer"), ordered_items, hotspot
+        )
+        cur.execute("""
+            INSERT INTO event_puzzle_progress (
+                participation_id, puzzle_id, attempt_count, solved_at, updated_at
+            ) VALUES (%s, %s, 1, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (participation_id, puzzle_id) DO UPDATE SET
+                attempt_count = event_puzzle_progress.attempt_count + 1,
+                solved_at = CASE WHEN %s THEN COALESCE(event_puzzle_progress.solved_at, CURRENT_TIMESTAMP)
+                                 ELSE event_puzzle_progress.solved_at END,
+                updated_at = CURRENT_TIMESTAMP
+        """, (participation[0], active[0], datetime.now() if correct else None, correct))
+        if correct:
+            remaining = [puzzle for puzzle in puzzles if puzzle[0] != active[0] and not progress.get(puzzle[0])]
+            if not remaining:
+                first_completion = finish_event(
+                    cur, event, participation, current_user.id,
+                    grant_rewards=event_is_open(event[5], event[7], event[8]),
+                )
+                flash("Event complete! Your completion has been recorded." if first_completion else "Puzzle solved!", "success")
+            else:
+                flash("Correct! The next puzzle has unlocked.", "success")
+        else:
+            flash("That answer did not unlock the puzzle. Try again or reveal a hint.", "error")
+        conn.commit()
+    except (ValueError, TypeError):
+        conn.rollback()
+        flash("The submitted answer was not valid", "error")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("player_event", slug=slug))
+
+
+@app.route("/events/<slug>/hint", methods=["POST"])
+@login_required
+def reveal_event_hint(slug):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        event = get_player_event(cur, slug)
+        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role)):
+            raise ValueError("Event unavailable")
+        participation = get_or_create_participation(cur, event[0], current_user.id) if event else None
+        puzzles = ordered_event_puzzles(cur, event[0]) if event else []
+        cur.execute("SELECT puzzle_id, solved_at FROM event_puzzle_progress WHERE participation_id = %s", (participation[0],))
+        solved = {row[0]: row[1] for row in cur.fetchall()}
+        active = next((puzzle for puzzle in puzzles if not solved.get(puzzle[0])), None)
+        if not active:
+            raise ValueError("No active puzzle")
+        cur.execute("SELECT COUNT(*) FROM event_hint_usage WHERE participation_id = %s AND puzzle_id = %s", (participation[0], active[0]))
+        next_hint = cur.fetchone()[0] + 1
+        allowed = min(3, event[9], len(active[11]))
+        if next_hint > allowed:
+            flash("No more hints are available for this puzzle", "error")
+        else:
+            cur.execute("""
+                INSERT INTO event_hint_usage (participation_id, puzzle_id, hint_number)
+                VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
+            """, (participation[0], active[0], next_hint))
+            flash(f"Hint {next_hint} revealed", "success")
+        conn.commit()
+    except (ValueError, TypeError, IndexError):
+        conn.rollback()
+        flash("A hint cannot be revealed right now", "error")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("player_event", slug=slug))
+
+
+@app.route("/events/<slug>/journal", methods=["POST"])
+@login_required
+def add_event_journal_entry(slug):
+    body = request.form.get("body", "").strip()
+    if not body or len(body) > 2000:
+        flash("Journal entries must be between 1 and 2,000 characters", "error")
+        return redirect(url_for("player_event", slug=slug))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_player_event(cur, slug)
+    if event and (event_is_open(event[5], event[7], event[8]) or role_can_manage_events(current_user.role)):
+        participation = get_or_create_participation(cur, event[0], current_user.id)
+        cur.execute("INSERT INTO event_journal_entries (participation_id, body) VALUES (%s, %s)", (participation[0], body))
+        conn.commit()
+        flash("Journal entry saved", "success")
+    cur.close()
+    conn.close()
+    return redirect(url_for("player_event", slug=slug))
+
+
+@app.route("/events/manage/<int:event_id>/reset-test-progress", methods=["POST"])
+@login_required
+def reset_event_test_progress(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    if event and not event_is_open(event[5], event[7], event[8]):
+        cur.execute("DELETE FROM event_participations WHERE event_id = %s AND user_id = %s", (event_id, current_user.id))
+        conn.commit()
+        flash("Your staff test progress was reset", "success")
+    else:
+        flash("Test progress can only be reset while an event is closed to players", "error")
+    cur.close()
+    conn.close()
+    return redirect(url_for("player_event", slug=event[2]) if event else url_for("event_manager"))
 
 
 @app.route("/store", methods=["GET", "POST"])
@@ -3009,6 +3533,41 @@ def inject_user_data():
         user_points=0,
         user_profile_picture=None
     )
+
+
+@app.context_processor
+def inject_event_clues():
+    if not current_user.is_authenticated:
+        return {"event_clues": []}
+    scope = request_page_scope()
+    if not scope:
+        return {"event_clues": []}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT c.id, c.name, c.page_scope, c.placement_zone, c.display_type,
+               c.label, c.tooltip, c.position_x, c.position_y,
+               c.width_percent, c.height_percent, c.image_data IS NOT NULL,
+               e.slug, e.title
+        FROM event_clue_placements c
+        JOIN events e ON e.id = c.event_id
+        WHERE c.is_active = TRUE
+          AND c.page_scope IN ('global', %s)
+          AND (c.starts_at IS NULL OR c.starts_at <= CURRENT_TIMESTAMP)
+          AND (c.ends_at IS NULL OR c.ends_at > CURRENT_TIMESTAMP)
+          AND (
+              %s = TRUE OR (
+                  e.status IN ('published', 'scheduled')
+                  AND (e.starts_at IS NULL OR e.starts_at <= CURRENT_TIMESTAMP)
+                  AND (e.ends_at IS NULL OR e.ends_at > CURRENT_TIMESTAMP)
+              )
+          )
+        ORDER BY c.created_at
+    """, (scope, role_can_manage_events(current_user.role)))
+    clues = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"event_clues": clues}
 
 @app.context_processor
 def inject_active_theme():

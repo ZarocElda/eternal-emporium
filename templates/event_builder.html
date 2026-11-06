@@ -8,6 +8,9 @@
         <p style="opacity:.65; margin:0;">Build reusable stages and puzzles. Answers are kept out of the preview.</p>
     </div>
     <div style="display:flex; gap:10px;">
+        <a href="{{ url_for('event_clue_placements', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Website clues</a>
+        <a href="{{ url_for('event_completions_manager', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Completions</a>
+        <a href="{{ url_for('player_event', slug=event[2]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Test as player</a>
         <a href="{{ url_for('preview_event', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Preview</a>
         <a href="{{ url_for('edit_event', event_id=event[0]) }}" style="padding:10px 14px; background:var(--theme-primary); border-radius:8px; color:white; text-decoration:none;">Event settings</a>
     </div>
