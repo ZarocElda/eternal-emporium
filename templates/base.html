@@ -476,6 +476,13 @@
                 </a>
             {% endif %}
 
+            {% if current_user.role in ["store_manager", "owner"] %}
+                <a href="{{ url_for('event_manager') }}"
+                class="{% if request.path.startswith('/events/manage') %}active-nav{% endif %}">
+                Event Manager
+                </a>
+            {% endif %}
+
             {% if current_user.role in ["admin", "store_manager", "owner"] %}
                 <a href="/store_orders"
                 class="{% if request.path.startswith('/store_orders') %}active-nav{% endif %}">

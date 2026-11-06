@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set points = rewards.get('points') %}
+{% set prize = rewards.get('manual_prize') %}
+<div style="margin-bottom:22px;">
+    <a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← Event Manager</a>
+    <h2 style="margin:12px 0 5px;">{{ 'Edit Event' if event else 'Create Event' }}</h2>
+    <p style="opacity:.65; margin:0;">Phase 2 creates the event foundation. Puzzle building follows in the next phase.</p>
+</div>
+
+<form method="post" style="display:grid; gap:18px; max-width:900px;">
+    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:20px; display:grid; gap:14px;">
+        <h3 style="margin:0;">Event details</h3>
+        <label>Title<input name="title" required maxlength="200" value="{{ event[1] if event else '' }}" placeholder="Fourth Anniversary Escape Room"></label>
+        <label>Short summary<input name="summary" maxlength="500" value="{{ event[3] if event and event[3] else '' }}" placeholder="Shown on event cards"></label>
+        <label>Description<textarea name="description" rows="5" placeholder="Event story and player instructions">{{ event[4] if event and event[4] else '' }}</textarea></label>
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;">
+            <label>Status<select name="status"><option value="draft" {% if not event or event[5]=='draft' %}selected{% endif %}>Draft</option><option value="scheduled" {% if event and event[5]=='scheduled' %}selected{% endif %}>Scheduled</option><option value="published" {% if event and event[5]=='published' %}selected{% endif %}>Published</option><option value="archived" {% if event and event[5]=='archived' %}selected{% endif %}>Archived</option></select></label>
+            <label>Visibility<select name="visibility"><option value="public" {% if not event or event[6]=='public' %}selected{% endif %}>Public</option><option value="hidden" {% if event and event[6]=='hidden' %}selected{% endif %}>Hidden</option></select></label>
+        </div>
+    </section>
+
+    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:20px; display:grid; gap:14px;">
+        <h3 style="margin:0;">Schedule and structure</h3>
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;">
+            <label>Starts<input type="datetime-local" name="starts_at" value="{{ event[7].strftime('%Y-%m-%dT%H:%M') if event and event[7] else '' }}"></label>
+            <label>Ends<input type="datetime-local" name="ends_at" value="{{ event[8].strftime('%Y-%m-%dT%H:%M') if event and event[8] else '' }}"></label>
+            <label>Maximum hints<input type="number" name="max_hints" min="0" max="20" value="{{ event[9] if event else 3 }}"></label>
+            <label>Number of stages<input type="number" name="stage_count" min="0" max="50" value="{{ stage_count }}"><small style="opacity:.6;">Existing stages are never removed here.</small></label>
+        </div>
+    </section>
+
+    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:20px; display:grid; gap:14px;">
+        <h3 style="margin:0;">Completion rewards</h3>
+        <label>Automatic store points<input type="number" name="points_reward" min="0" value="{{ points[0] if points else 0 }}"></label>
+        <label>Manual prize name<input name="prize_name" maxlength="255" value="{{ prize[1] if prize else '' }}" placeholder="Anniversary prize package"></label>
+        <label>Fulfillment instructions<textarea name="prize_instructions" rows="3" placeholder="Internal notes for staff">{{ prize[2] if prize and prize[2] else '' }}</textarea></label>
+    </section>
+
+    <div style="display:flex; gap:12px;">
+        <button type="submit" style="width:auto; min-width:160px;">Save Event</button>
+        <a href="{{ url_for('event_manager') }}" style="padding:10px 16px; color:var(--theme-muted-text); text-decoration:none;">Cancel</a>
+    </div>
+</form>
+{% endblock %}

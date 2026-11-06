@@ -398,6 +398,25 @@ def ensure_password_security_columns():
 
 ELEVATED_ROLES = {"admin", "store_manager", "owner"}
 ROLE_LEVELS = {"user": 0, "admin": 1, "store_manager": 2, "owner": 3}
+EVENT_MANAGER_ROLES = {"store_manager", "owner"}
+
+
+def role_can_manage_events(role):
+    return role in EVENT_MANAGER_ROLES
+
+
+def parse_event_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+
+
+def event_slug(value):
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug[:150] or "event"
 
 
 def valid_elevated_password(password):
@@ -1815,6 +1834,218 @@ def theme_manager():
     )
 
 # ================= STORE =================
+@app.route("/events/manage")
+@login_required
+def event_manager():
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            e.id, e.title, e.slug, e.status, e.visibility,
+            e.starts_at, e.ends_at, e.updated_at,
+            COUNT(DISTINCT s.id) AS stage_count,
+            COUNT(DISTINCT p.id) AS puzzle_count
+        FROM events e
+        LEFT JOIN event_stages s ON s.event_id = e.id
+        LEFT JOIN event_puzzles p ON p.stage_id = s.id
+        GROUP BY e.id
+        ORDER BY e.updated_at DESC, e.id DESC
+    """)
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    counts = {"draft": 0, "scheduled": 0, "published": 0, "archived": 0}
+    for event in events:
+        counts[event[3]] = counts.get(event[3], 0) + 1
+
+    return render_template("event_manager.html", events=events, counts=counts)
+
+
+@app.route("/events/manage/new", methods=["GET", "POST"])
+@login_required
+def create_event():
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+
+    if request.method == "POST":
+        return save_event_form()
+
+    return render_template("event_editor.html", event=None, rewards={}, stage_count=0)
+
+
+@app.route("/events/manage/<int:event_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_event(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+
+    if request.method == "POST":
+        return save_event_form(event_id)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title, slug, summary, description, status, visibility,
+               starts_at, ends_at, max_hints
+        FROM events
+        WHERE id = %s
+    """, (event_id,))
+    event = cur.fetchone()
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+
+    cur.execute("SELECT COUNT(*) FROM event_stages WHERE event_id = %s", (event_id,))
+    stage_count = cur.fetchone()[0]
+    cur.execute("""
+        SELECT reward_type, points_amount, prize_name, fulfillment_instructions
+        FROM event_rewards WHERE event_id = %s
+    """, (event_id,))
+    rewards = {row[0]: row[1:] for row in cur.fetchall()}
+    cur.close()
+    conn.close()
+    return render_template(
+        "event_editor.html", event=event, rewards=rewards, stage_count=stage_count
+    )
+
+
+def save_event_form(event_id=None):
+    title = request.form.get("title", "").strip()
+    summary = request.form.get("summary", "").strip()
+    description = request.form.get("description", "").strip()
+    status = request.form.get("status", "draft")
+    visibility = request.form.get("visibility", "public")
+    starts_at_raw = request.form.get("starts_at", "")
+    ends_at_raw = request.form.get("ends_at", "")
+    starts_at = parse_event_datetime(starts_at_raw)
+    ends_at = parse_event_datetime(ends_at_raw)
+
+    try:
+        max_hints = int(request.form.get("max_hints", 3))
+        stage_count = int(request.form.get("stage_count", 0))
+        points_reward = int(request.form.get("points_reward", 0) or 0)
+    except ValueError:
+        flash("Hints, stages, and points must be whole numbers", "error")
+        return redirect(request.url)
+
+    if not title:
+        flash("Event title is required", "error")
+        return redirect(request.url)
+    if status not in {"draft", "scheduled", "published", "archived"}:
+        flash("Invalid event status", "error")
+        return redirect(request.url)
+    if visibility not in {"public", "hidden"}:
+        flash("Invalid event visibility", "error")
+        return redirect(request.url)
+    if starts_at_raw and starts_at is None or ends_at_raw and ends_at is None:
+        flash("Enter valid event dates", "error")
+        return redirect(request.url)
+    if starts_at and ends_at and ends_at <= starts_at:
+        flash("End date must be after the start date", "error")
+        return redirect(request.url)
+    if not 0 <= max_hints <= 20 or not 0 <= stage_count <= 50 or points_reward < 0:
+        flash("Event number settings are outside the allowed range", "error")
+        return redirect(request.url)
+
+    prize_name = request.form.get("prize_name", "").strip()
+    prize_instructions = request.form.get("prize_instructions", "").strip()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        if event_id is None:
+            base_slug = event_slug(title)
+            slug = base_slug
+            suffix = 2
+            while True:
+                cur.execute("SELECT 1 FROM events WHERE slug = %s", (slug,))
+                if not cur.fetchone():
+                    break
+                slug = f"{base_slug}-{suffix}"
+                suffix += 1
+            cur.execute("""
+                INSERT INTO events (
+                    slug, title, summary, description, status, visibility,
+                    starts_at, ends_at, max_hints, created_by, updated_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                slug, title, summary or None, description or None, status,
+                visibility, starts_at, ends_at, max_hints,
+                current_user.id, current_user.id
+            ))
+            event_id = cur.fetchone()[0]
+        else:
+            cur.execute("SELECT 1 FROM events WHERE id = %s", (event_id,))
+            if not cur.fetchone():
+                flash("Event not found", "error")
+                return redirect(url_for("event_manager"))
+            cur.execute("""
+                UPDATE events SET
+                    title = %s, summary = %s, description = %s, status = %s,
+                    visibility = %s, starts_at = %s, ends_at = %s,
+                    max_hints = %s, updated_by = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (
+                title, summary or None, description or None, status, visibility,
+                starts_at, ends_at, max_hints, current_user.id, event_id
+            ))
+
+        cur.execute("SELECT COUNT(*) FROM event_stages WHERE event_id = %s", (event_id,))
+        existing_stage_count = cur.fetchone()[0]
+        if stage_count < existing_stage_count:
+            stage_count = existing_stage_count
+            flash("Stage count was kept because existing stages are never deleted here", "info")
+        for position in range(existing_stage_count + 1, stage_count + 1):
+            cur.execute("""
+                INSERT INTO event_stages (event_id, position, title)
+                VALUES (%s, %s, %s)
+            """, (event_id, position, f"Stage {position}"))
+
+        if points_reward > 0:
+            cur.execute("""
+                INSERT INTO event_rewards (event_id, reward_type, points_amount)
+                VALUES (%s, 'points', %s)
+                ON CONFLICT (event_id, reward_type)
+                DO UPDATE SET points_amount = EXCLUDED.points_amount
+            """, (event_id, points_reward))
+        else:
+            cur.execute("""
+                DELETE FROM event_rewards
+                WHERE event_id = %s AND reward_type = 'points'
+            """, (event_id,))
+
+        if prize_name:
+            cur.execute("""
+                INSERT INTO event_rewards (
+                    event_id, reward_type, prize_name, fulfillment_instructions
+                ) VALUES (%s, 'manual_prize', %s, %s)
+                ON CONFLICT (event_id, reward_type)
+                DO UPDATE SET prize_name = EXCLUDED.prize_name,
+                              fulfillment_instructions = EXCLUDED.fulfillment_instructions
+            """, (event_id, prize_name, prize_instructions or None))
+        else:
+            cur.execute("""
+                DELETE FROM event_rewards
+                WHERE event_id = %s AND reward_type = 'manual_prize'
+            """, (event_id,))
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+    flash("Event saved", "success")
+    return redirect(url_for("edit_event", event_id=event_id))
+
+
 @app.route("/store", methods=["GET", "POST"])
 @login_required
 def store():
