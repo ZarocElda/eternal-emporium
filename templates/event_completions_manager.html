@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% include '_event_workspace_nav.html' %}
 <div style="margin-bottom:22px;"><a href="{{ url_for('event_builder', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">← Puzzle Builder</a><h2 style="margin:12px 0 5px;">Completion Tracking</h2><p style="opacity:.65; margin:0;">{{ event[1] }} rewards and manual prize fulfillment.</p></div>
 <div class="table-container"><table><thead><tr><th>Player</th><th>Completed</th><th>Time</th><th>Hints</th><th>Points</th><th>Manual prize</th></tr></thead><tbody>{% for row in completions %}<tr><td>{{ row[1] }}</td><td>{{ row[2].strftime('%m/%d/%Y %I:%M %p') }}</td><td>{{ row[3] }} sec</td><td>{{ row[4] }}</td><td>{{ row[5] }}</td><td>{% if row[6] == 'pending' %}<form method="post"><input type="hidden" name="grant_id" value="{{ row[7] }}"><button type="submit" style="width:auto;">Fulfill {{ row[8] }}</button></form>{% elif row[6] == 'fulfilled' %}<span style="color:var(--theme-accent);">✓ {{ row[8] }} fulfilled</span>{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="6" style="text-align:center; opacity:.65;">No players have completed this event yet.</td></tr>{% endfor %}</tbody></table></div>
 {% endblock %}

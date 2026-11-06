@@ -2190,6 +2190,11 @@ def get_or_create_participation(cur, event_id, user_id):
     return cur.fetchone()
 
 
+def user_can_test_event(cur, event_id, user_id):
+    cur.execute("SELECT 1 FROM event_testers WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+    return bool(cur.fetchone())
+
+
 def ordered_event_puzzles(cur, event_id):
     cur.execute("""
         SELECT p.id, p.stage_id, s.position, s.title, s.description,
@@ -2469,7 +2474,7 @@ def event_puzzle_asset(puzzle_id):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT a.data, a.content_type, e.status, e.starts_at, e.ends_at
+        SELECT a.data, a.content_type, e.status, e.starts_at, e.ends_at, e.id
         FROM event_puzzle_assets a
         JOIN event_puzzles p ON p.id = a.puzzle_id
         JOIN event_stages s ON s.id = p.stage_id
@@ -2481,7 +2486,14 @@ def event_puzzle_asset(puzzle_id):
     conn.close()
     if not asset:
         return render_template("error.html", message="Puzzle image not found"), 404
-    if not role_can_manage_events(current_user.role) and not event_is_open(asset[2], asset[3], asset[4]):
+    tester_access = False
+    if asset:
+        conn = get_db_connection()
+        test_cur = conn.cursor()
+        tester_access = user_can_test_event(test_cur, asset[5], current_user.id)
+        test_cur.close()
+        conn.close()
+    if not role_can_manage_events(current_user.role) and not tester_access and not event_is_open(asset[2], asset[3], asset[4]):
         return render_template("error.html", message="Puzzle image not available"), 403
     return Response(bytes(asset[0]), mimetype=asset[1])
 
@@ -2536,7 +2548,23 @@ def event_clue_placements(event_id):
         return render_template("error.html", message="Event not found"), 404
     if request.method == "POST":
         try:
-            if request.form.get("action") == "delete":
+            action = request.form.get("action")
+            if action == "add_tester":
+                username = request.form.get("username", "").strip()
+                cur.execute("SELECT id FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
+                user = cur.fetchone()
+                if not user:
+                    raise ValueError("No account was found with that username")
+                cur.execute("""
+                    INSERT INTO event_testers (event_id, user_id, added_by)
+                    VALUES (%s, %s, %s) ON CONFLICT (event_id, user_id) DO NOTHING
+                """, (event_id, user[0], current_user.id))
+                flash(f"{username} can now test this draft event", "success")
+            elif action == "remove_tester":
+                tester_id = int(request.form.get("tester_id", 0))
+                cur.execute("DELETE FROM event_testers WHERE event_id = %s AND user_id = %s", (event_id, tester_id))
+                flash("Tester access removed", "success")
+            elif action == "delete":
                 placement_id = int(request.form.get("placement_id", 0))
                 cur.execute("DELETE FROM event_clue_placements WHERE id = %s AND event_id = %s", (placement_id, event_id))
                 flash("Clue placement removed", "success")
@@ -2613,9 +2641,15 @@ def event_clue_placements(event_id):
         ORDER BY created_at DESC
     """, (event_id,))
     placements = cur.fetchall()
+    cur.execute("""
+        SELECT u.id, u.username FROM event_testers t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.event_id = %s ORDER BY LOWER(u.username)
+    """, (event_id,))
+    testers = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template("event_clue_placements.html", event=event, placements=placements)
+    return render_template("event_clue_placements.html", event=event, placements=placements, testers=testers)
 
 
 @app.route("/event_clue_image/<int:placement_id>")
@@ -2706,7 +2740,8 @@ def discover_event(placement_id, token):
           AND (c.ends_at IS NULL OR c.ends_at > CURRENT_TIMESTAMP)
     """, (placement_id, token))
     entrance = cur.fetchone()
-    if not entrance or (not event_is_open(entrance[2], entrance[3], entrance[4]) and not role_can_manage_events(current_user.role)):
+    tester_access = bool(entrance and user_can_test_event(cur, entrance[0], current_user.id))
+    if not entrance or (not event_is_open(entrance[2], entrance[3], entrance[4]) and not role_can_manage_events(current_user.role) and not tester_access):
         cur.close()
         conn.close()
         return render_template("error.html", message="This entrance is sealed"), 404
@@ -2731,12 +2766,14 @@ def player_event(slug):
         cur.close()
         conn.close()
         return render_template("error.html", message="Event not found"), 404
-    manager_preview = role_can_manage_events(current_user.role)
-    if not event_is_open(event[5], event[7], event[8]) and not manager_preview:
+    manager_access = role_can_manage_events(current_user.role)
+    tester_access = user_can_test_event(cur, event[0], current_user.id)
+    preview_access = manager_access or tester_access
+    if not event_is_open(event[5], event[7], event[8]) and not preview_access:
         cur.close()
         conn.close()
         return render_template("event_unavailable.html", event=event), 403
-    if not manager_preview:
+    if not preview_access:
         cur.execute("""
             SELECT 1 FROM event_discoveries
             WHERE event_id = %s AND user_id = %s
@@ -2795,7 +2832,8 @@ def player_event(slug):
         puzzles=puzzles, progress=progress, active_puzzle=active_puzzle,
         solved_count=solved_count, journal_entries=journal_entries,
         used_hints=used_hints, leaderboard=leaderboard,
-        manager_preview=manager_preview and not event_is_open(event[5], event[7], event[8]),
+        manager_preview=preview_access and not event_is_open(event[5], event[7], event[8]),
+        can_reset_test=manager_access or tester_access,
     )
 
 
@@ -2806,7 +2844,8 @@ def answer_event_puzzle(slug):
     cur = conn.cursor()
     try:
         event = get_player_event(cur, slug)
-        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role)):
+        tester_access = bool(event and user_can_test_event(cur, event[0], current_user.id))
+        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role) and not tester_access):
             flash("This event is not currently available", "error")
             return redirect(url_for("player_events"))
         participation = get_or_create_participation(cur, event[0], current_user.id)
@@ -2865,7 +2904,8 @@ def reveal_event_hint(slug):
     cur = conn.cursor()
     try:
         event = get_player_event(cur, slug)
-        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role)):
+        tester_access = bool(event and user_can_test_event(cur, event[0], current_user.id))
+        if not event or (not event_is_open(event[5], event[7], event[8]) and not role_can_manage_events(current_user.role) and not tester_access):
             raise ValueError("Event unavailable")
         participation = get_or_create_participation(cur, event[0], current_user.id) if event else None
         puzzles = ordered_event_puzzles(cur, event[0]) if event else []
@@ -2905,7 +2945,8 @@ def add_event_journal_entry(slug):
     conn = get_db_connection()
     cur = conn.cursor()
     event = get_player_event(cur, slug)
-    if event and (event_is_open(event[5], event[7], event[8]) or role_can_manage_events(current_user.role)):
+    tester_access = bool(event and user_can_test_event(cur, event[0], current_user.id))
+    if event and (event_is_open(event[5], event[7], event[8]) or role_can_manage_events(current_user.role) or tester_access):
         participation = get_or_create_participation(cur, event[0], current_user.id)
         cur.execute("INSERT INTO event_journal_entries (participation_id, body) VALUES (%s, %s)", (participation[0], body))
         conn.commit()
@@ -2918,12 +2959,11 @@ def add_event_journal_entry(slug):
 @app.route("/events/manage/<int:event_id>/reset-test-progress", methods=["POST"])
 @login_required
 def reset_event_test_progress(event_id):
-    if not role_can_manage_events(current_user.role):
-        return redirect(url_for("store"))
     conn = get_db_connection()
     cur = conn.cursor()
     event = get_managed_event(cur, event_id)
-    if event and not event_is_open(event[5], event[7], event[8]):
+    tester_access = bool(event and user_can_test_event(cur, event_id, current_user.id))
+    if event and (role_can_manage_events(current_user.role) or tester_access) and not event_is_open(event[5], event[7], event[8]):
         cur.execute("DELETE FROM event_participations WHERE event_id = %s AND user_id = %s", (event_id, current_user.id))
         conn.commit()
         flash("Your staff test progress was reset", "success")
@@ -3582,14 +3622,17 @@ def inject_event_clues():
           AND (c.starts_at IS NULL OR c.starts_at <= CURRENT_TIMESTAMP)
           AND (c.ends_at IS NULL OR c.ends_at > CURRENT_TIMESTAMP)
           AND (
-              %s = TRUE OR (
+              %s = TRUE OR EXISTS (
+                  SELECT 1 FROM event_testers t
+                  WHERE t.event_id = e.id AND t.user_id = %s
+              ) OR (
                   e.status IN ('published', 'scheduled')
                   AND (e.starts_at IS NULL OR e.starts_at <= CURRENT_TIMESTAMP)
                   AND (e.ends_at IS NULL OR e.ends_at > CURRENT_TIMESTAMP)
               )
           )
         ORDER BY c.created_at
-    """, (scope, role_can_manage_events(current_user.role)))
+    """, (scope, role_can_manage_events(current_user.role), current_user.id))
     clues = cur.fetchall()
     cur.close()
     conn.close()

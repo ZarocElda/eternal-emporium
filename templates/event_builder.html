@@ -1,20 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:24px; flex-wrap:wrap;">
-    <div>
-        <a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← Event Manager</a>
-        <h2 style="margin:12px 0 5px;">{{ event[1] }} — Puzzle Builder</h2>
-        <p style="opacity:.65; margin:0;">Build reusable stages and puzzles. Answers are kept out of the preview.</p>
-    </div>
-    <div style="display:flex; gap:10px;">
-        <a href="{{ url_for('event_clue_placements', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Website clues</a>
-        <a href="{{ url_for('event_completions_manager', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Completions</a>
-        <a href="{{ url_for('player_event', slug=event[2]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Test as player</a>
-        <a href="{{ url_for('preview_event', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Preview</a>
-        <a href="{{ url_for('edit_event', event_id=event[0]) }}" style="padding:10px 14px; background:var(--theme-primary); border-radius:8px; color:white; text-decoration:none;">Event settings</a>
-    </div>
-</div>
+<a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← All events</a>
+{% include '_event_workspace_nav.html' %}
+<div style="margin-bottom:20px;"><h3 style="font-size:24px; margin-bottom:5px;">Build the adventure</h3><p style="opacity:.65; margin:0;">Each stage is a room or door. Puzzles unlock in the order shown.</p></div>
 
 <div style="display:grid; gap:18px;">
 {% for stage in stages %}

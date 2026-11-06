@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% include '_event_workspace_nav.html' %}
 {% set content = puzzle[5] if puzzle else {} %}
 {% set solution = puzzle[6] if puzzle else {} %}
 {% set hints = puzzle[7] if puzzle else [] %}

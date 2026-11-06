@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% include '_event_workspace_nav.html' %}
 <div style="display:flex; justify-content:space-between; gap:18px; align-items:flex-start; flex-wrap:wrap; margin-bottom:24px;">
     <div>
         <a href="{{ url_for('event_builder', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">← Puzzle Builder</a>

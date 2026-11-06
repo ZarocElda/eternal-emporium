@@ -1,0 +1,18 @@
+<div style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:14px; padding:16px; margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+        <div><small style="text-transform:uppercase; letter-spacing:.12em; color:var(--theme-accent);">Event workspace</small><h2 style="margin:4px 0 0;">{{ event[1] }}</h2></div>
+        <span style="padding:5px 10px; border:1px solid var(--theme-border); border-radius:20px; font-size:12px; text-transform:uppercase;">{{ event[5] }} · {{ event[6] }}</span>
+    </div>
+    <nav style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% set current_tab = 'build' if request.endpoint in ['event_builder','create_event_puzzle','edit_event_puzzle'] else request.endpoint %}
+        {% set tabs = [
+            ('Overview', url_for('edit_event', event_id=event[0]), 'edit_event'),
+            ('Build', url_for('event_builder', event_id=event[0]), 'build'),
+            ('Entrances & testers', url_for('event_clue_placements', event_id=event[0]), 'event_clue_placements'),
+            ('Staff preview', url_for('preview_event', event_id=event[0]), 'preview_event'),
+            ('Results & prizes', url_for('event_completions_manager', event_id=event[0]), 'event_completions_manager')
+        ] %}
+        {% for label, href, marker in tabs %}<a href="{{ href }}" style="padding:9px 12px; border-radius:8px; text-decoration:none; {% if marker == current_tab %}background:var(--theme-primary); color:white;{% else %}border:1px solid var(--theme-border); color:var(--theme-text);{% endif %}">{{ loop.index }}. {{ label }}</a>{% endfor %}
+        <a href="{{ url_for('player_event', slug=event[2]) }}" style="padding:9px 12px; border-radius:8px; text-decoration:none; border:1px solid var(--theme-accent); color:var(--theme-accent);">Test player view ↗</a>
+    </nav>
+</div>

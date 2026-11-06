@@ -164,21 +164,28 @@
         }
 
         /* INPUTS */
-        input {
+        input, select, textarea {
             width: 100%;
             padding: 12px;
             margin: 8px 0 16px 0;
+            box-sizing: border-box;
             border-radius: 8px;
             border: 1px solid var(--theme-border);
             background-color: var(--theme-card-bg);
             color: var(--theme-text);
             font-size: 14px;
+            font-family: inherit;
         }
 
-        input:focus {
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--theme-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 18%, transparent);
         }
+
+        textarea { resize: vertical; }
+        label { display: block; font-weight: 600; font-size: 14px; }
+        label small { font-weight: 400; }
 
         /* BUTTONS */
         button {
