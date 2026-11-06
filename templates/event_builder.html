@@ -4,25 +4,25 @@
 <a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← All events</a>
 {% include '_event_workspace_nav.html' %}
 <div style="margin-bottom:20px;"><h3 style="font-size:24px; margin-bottom:5px;">Build the adventure</h3><p style="opacity:.65; margin:0;">Each stage is a room or door. Puzzles unlock in the order shown.</p></div>
+<section style="padding:16px; margin-bottom:18px; border:1px solid {{ '#22c55e' if not readiness_issues else 'var(--theme-border)' }}; border-radius:12px; background:var(--theme-card-bg);"><strong>{{ '✓ Ready for a full test' if not readiness_issues else 'Launch readiness' }}</strong>{% if readiness_issues %}<ul style="margin-bottom:0;">{% for issue in readiness_issues %}<li>{{ issue }}</li>{% endfor %}</ul>{% else %}<p style="opacity:.7; margin-bottom:0;">All required event pieces are connected.</p>{% endif %}</section>
 
 <div style="display:grid; gap:18px;">
 {% for stage in stages %}
     <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:18px;">
         <form method="post" style="display:grid; grid-template-columns:90px minmax(180px,1fr) 2fr auto; gap:10px; align-items:end;">
-            <input type="hidden" name="action" value="update_stage">
             <input type="hidden" name="stage_id" value="{{ stage[0] }}">
-            <div><small style="opacity:.6;">Stage</small><div style="font-size:26px; font-weight:700; padding:10px 0;">{{ stage[1] }}</div></div>
+            <div><small style="opacity:.6;">Stage</small><div style="font-size:26px; font-weight:700; padding:10px 0;">{{ stage[1] }}</div><div style="display:flex;gap:4px;"><button name="action" value="move_stage_up" title="Move stage up" style="width:auto;margin:0;">↑</button><button name="action" value="move_stage_down" title="Move stage down" style="width:auto;margin:0;">↓</button></div></div>
             <label>Title<input name="title" value="{{ stage[2] }}" required maxlength="200" style="margin-bottom:0;"></label>
             <label>Description<input name="description" value="{{ stage[3] or '' }}" style="margin-bottom:0;"></label>
-            <button type="submit" style="width:auto; padding:12px 16px;">Save stage</button>
+            <button type="submit" name="action" value="update_stage" style="width:auto; padding:12px 16px;">Save stage</button>
         </form>
 
         <div style="display:grid; gap:9px; margin-top:18px;">
         {% for puzzle in puzzles_by_stage.get(stage[0], []) %}
-            <a href="{{ url_for('edit_event_puzzle', event_id=event[0], stage_id=stage[0], puzzle_id=puzzle[0]) }}" style="display:flex; justify-content:space-between; gap:15px; padding:13px; border:1px solid var(--theme-border); border-radius:9px; color:var(--theme-text); text-decoration:none;">
+            <div style="display:flex; justify-content:space-between; gap:15px; padding:13px; border:1px solid var(--theme-border); border-radius:9px; align-items:center;">
                 <span><strong>{{ puzzle[2] }}. {{ puzzle[3] }}</strong><br><small style="opacity:.65;">{{ puzzle_types[puzzle[4]] }}{% if puzzle[7] %} · image attached{% endif %}</small></span>
-                <span style="opacity:.7;">{{ 'Active' if puzzle[6] else 'Inactive' }} →</span>
-            </a>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"><a href="{{ url_for('edit_event_puzzle', event_id=event[0], stage_id=stage[0], puzzle_id=puzzle[0]) }}" style="color:var(--theme-primary); text-decoration:none; padding:6px;">Edit</a><form method="post"><input type="hidden" name="action" value="move_puzzle_up"><input type="hidden" name="puzzle_id" value="{{ puzzle[0] }}"><button title="Move up" style="width:auto; margin:0;">↑</button></form><form method="post"><input type="hidden" name="action" value="move_puzzle_down"><input type="hidden" name="puzzle_id" value="{{ puzzle[0] }}"><button title="Move down" style="width:auto; margin:0;">↓</button></form><form method="post"><input type="hidden" name="action" value="duplicate_puzzle"><input type="hidden" name="puzzle_id" value="{{ puzzle[0] }}"><button style="width:auto; margin:0;">Duplicate</button></form></div>
+            </div>
         {% else %}
             <div style="padding:16px; border:1px dashed var(--theme-border); border-radius:9px; opacity:.65;">No puzzles in this stage yet.</div>
         {% endfor %}

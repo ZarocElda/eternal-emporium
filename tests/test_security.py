@@ -120,6 +120,16 @@ class SecurityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_puzzle_configuration(form)
 
+    def test_hidden_website_clue_needs_no_typed_answer(self):
+        puzzle_type, _, solution, hints = build_puzzle_configuration({
+            "puzzle_type": "hidden_clue", "instructions": "Search the store",
+            "options": "", "hidden_location": "Store footer",
+            "hint_1": "Look low", "hint_2": "", "hint_3": "",
+        })
+        self.assertEqual(puzzle_type, "hidden_clue")
+        self.assertTrue(solution["website_clue"])
+        self.assertEqual(hints, ["Look low"])
+
     def test_event_availability(self):
         from datetime import datetime, timedelta
         now = datetime(2027, 2, 1, 12, 0)
