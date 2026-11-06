@@ -44,4 +44,14 @@
         <a href="{{ url_for('event_manager') }}" style="padding:10px 16px; color:var(--theme-muted-text); text-decoration:none;">Cancel</a>
     </div>
 </form>
+{% if event %}
+<section style="max-width:900px;margin-top:30px;padding:20px;border:1px solid #ef4444;border-radius:12px;background:color-mix(in srgb,#ef4444 8%,var(--theme-card-bg));">
+    <h3 style="margin:0 0 7px;color:#f87171;">Danger area</h3>
+    <p style="margin:0 0 14px;opacity:.78;line-height:1.5;">Deleting this event permanently removes its stages, puzzles, clues, player progress, completions, testers, and reward records. Points already added to player balances will not be reversed.</p>
+    <form method="post" action="{{ url_for('delete_event', event_id=event[0]) }}" onsubmit="return confirm('Permanently delete this entire event? This cannot be undone.');" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+        <label style="flex:1;min-width:260px;">Type <strong>{{ event[1] }}</strong> to confirm<input name="confirmation" required autocomplete="off" placeholder="Exact event title" style="margin-bottom:0;"></label>
+        <button type="submit" class="delete" style="width:auto;padding:12px 18px;">Delete event permanently</button>
+    </form>
+</section>
+{% endif %}
 {% endblock %}

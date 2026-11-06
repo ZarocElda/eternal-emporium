@@ -2031,6 +2031,38 @@ def edit_event(event_id):
     )
 
 
+@app.route("/events/manage/<int:event_id>/delete", methods=["POST"])
+@login_required
+def delete_event(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT title FROM events WHERE id = %s", (event_id,))
+        event = cur.fetchone()
+        if not event:
+            flash("Event not found", "error")
+            return redirect(url_for("event_manager"))
+
+        confirmation = request.form.get("confirmation", "").strip()
+        if confirmation != event[0]:
+            flash("Event was not deleted. Enter its title exactly to confirm.", "error")
+            return redirect(url_for("edit_event", event_id=event_id))
+
+        cur.execute("DELETE FROM events WHERE id = %s", (event_id,))
+        conn.commit()
+        flash(f'Event "{event[0]}" was permanently deleted', "success")
+        return redirect(url_for("event_manager"))
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 def save_event_form(event_id=None):
     title = request.form.get("title", "").strip()
     summary = request.form.get("summary", "").strip()
