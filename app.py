@@ -2438,6 +2438,7 @@ def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
 
     puzzle = None
     has_image = False
+    clue_placement = None
     if puzzle_id is not None:
         cur.execute("""
             SELECT id, position, title, puzzle_type, prompt, content,
@@ -2451,6 +2452,15 @@ def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
             return render_template("error.html", message="Puzzle not found"), 404
         cur.execute("SELECT 1 FROM event_puzzle_assets WHERE puzzle_id = %s AND asset_kind = 'image'", (puzzle_id,))
         has_image = bool(cur.fetchone())
+        cur.execute("""
+            SELECT id, name, page_scope, placement_zone, display_type, label,
+                   tooltip, position_x, position_y, width_percent, height_percent,
+                   is_active, image_data IS NOT NULL
+            FROM event_clue_placements
+            WHERE event_id = %s AND target_puzzle_id = %s
+            ORDER BY created_at DESC LIMIT 1
+        """, (event_id, puzzle_id))
+        clue_placement = cur.fetchone()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -2517,6 +2527,77 @@ def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
                     image.mimetype or "application/octet-stream",
                     psycopg2.Binary(image_data),
                 ))
+
+            if puzzle_type == "hidden_clue":
+                clue_enabled = request.form.get("clue_enabled") == "on"
+                clue_page = request.form.get("clue_page_scope", "store")
+                clue_zone = request.form.get("clue_placement_zone", "content_top")
+                clue_display = request.form.get("clue_display_type", "invisible_hotspot")
+                if clue_page not in {"global", "store", "dashboard", "profile", "purchases"}:
+                    raise ValueError("Choose a valid website page for the hidden clue")
+                if clue_zone not in {"content_top", "theme_banner_hotspot", "floating_corner", "footer"}:
+                    raise ValueError("Choose a valid area for the hidden clue")
+                if clue_display not in {"text", "image", "invisible_hotspot"}:
+                    raise ValueError("Choose a valid hidden-clue appearance")
+                clue_x = float(request.form.get("clue_position_x", 50))
+                clue_y = float(request.form.get("clue_position_y", 50))
+                clue_width = float(request.form.get("clue_width_percent", 12))
+                clue_height = float(request.form.get("clue_height_percent", 18))
+                if not 0 <= clue_x <= 100 or not 0 <= clue_y <= 100 or not 1 <= clue_width <= 100 or not 1 <= clue_height <= 100:
+                    raise ValueError("Hidden-clue position or size is outside the page")
+                clue_image = request.files.get("clue_image")
+                clue_image_data = None
+                if clue_image and clue_image.filename:
+                    extension = os.path.splitext(clue_image.filename)[1].lower()
+                    if extension not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+                        raise ValueError("Hidden-clue images must be JPG, PNG, WEBP, or GIF")
+                    clue_image_data = clue_image.read(5 * 1024 * 1024 + 1)
+                    if len(clue_image_data) > 5 * 1024 * 1024:
+                        raise ValueError("Hidden-clue images must be 5 MB or smaller")
+                cur.execute("SELECT id, image_data IS NOT NULL FROM event_clue_placements WHERE event_id=%s AND target_puzzle_id=%s ORDER BY created_at DESC LIMIT 1", (event_id, puzzle_id))
+                existing_clue = cur.fetchone()
+                if clue_enabled and clue_display == "image" and clue_image_data is None and not (existing_clue and existing_clue[1]):
+                    raise ValueError("Custom-image clues need an uploaded image")
+                clue_name = request.form.get("clue_name", "").strip() or f"{title} website clue"
+                clue_values = (
+                    clue_name, clue_page, clue_zone, clue_display,
+                    request.form.get("clue_label", "").strip() or None,
+                    request.form.get("clue_tooltip", "").strip() or None,
+                    clue_x, clue_y, clue_width, clue_height, clue_enabled,
+                )
+                if existing_clue:
+                    cur.execute("""
+                        UPDATE event_clue_placements SET name=%s, page_scope=%s,
+                            placement_zone=%s, display_type=%s, label=%s, tooltip=%s,
+                            position_x=%s, position_y=%s, width_percent=%s,
+                            height_percent=%s, is_active=%s,
+                            image_filename=COALESCE(%s,image_filename),
+                            image_content_type=COALESCE(%s,image_content_type),
+                            image_data=COALESCE(%s,image_data), updated_at=CURRENT_TIMESTAMP
+                        WHERE id=%s
+                    """, clue_values + (
+                        os.path.basename(clue_image.filename) if clue_image_data else None,
+                        clue_image.mimetype if clue_image_data else None,
+                        psycopg2.Binary(clue_image_data) if clue_image_data else None,
+                        existing_clue[0],
+                    ))
+                else:
+                    cur.execute("""
+                        INSERT INTO event_clue_placements (
+                            event_id, name, page_scope, placement_zone, display_type,
+                            label, tooltip, position_x, position_y, width_percent,
+                            height_percent, image_filename, image_content_type, image_data,
+                            is_active, created_by, entry_token, target_puzzle_id
+                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """, (
+                        event_id, *clue_values[:10],
+                        os.path.basename(clue_image.filename) if clue_image_data else None,
+                        clue_image.mimetype if clue_image_data else None,
+                        psycopg2.Binary(clue_image_data) if clue_image_data else None,
+                        clue_enabled, current_user.id, secrets.token_urlsafe(32), puzzle_id,
+                    ))
+            else:
+                cur.execute("UPDATE event_clue_placements SET is_active=FALSE, updated_at=CURRENT_TIMESTAMP WHERE event_id=%s AND target_puzzle_id=%s", (event_id, puzzle_id))
             conn.commit()
             flash("Puzzle saved", "success")
             return redirect(url_for("event_builder", event_id=event_id))
@@ -2534,6 +2615,7 @@ def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
     return render_template(
         "puzzle_editor.html", event=event, stage=stage, puzzle=puzzle,
         puzzle_types=PUZZLE_TYPES, has_image=has_image,
+        clue_placement=clue_placement,
     )
 
 
@@ -2675,11 +2757,6 @@ def event_clue_placements(event_id):
                         raise ValueError("Clue images must be 5 MB or smaller")
                 if display_type == "image" and image_data is None:
                     raise ValueError("Image clues need an uploaded image")
-                target_puzzle_id = int(request.form.get("target_puzzle_id", 0) or 0) or None
-                if target_puzzle_id:
-                    cur.execute("""SELECT 1 FROM event_puzzles p JOIN event_stages s ON s.id=p.stage_id WHERE p.id=%s AND s.event_id=%s""", (target_puzzle_id, event_id))
-                    if not cur.fetchone():
-                        raise ValueError("Choose a puzzle from this event")
                 cur.execute("""
                     INSERT INTO event_clue_placements (
                         event_id, name, page_scope, placement_zone, display_type,
@@ -2697,7 +2774,7 @@ def event_clue_placements(event_id):
                     image.mimetype if image_data else None,
                     psycopg2.Binary(image_data) if image_data else None,
                     starts_at, ends_at, request.form.get("is_active") == "on",
-                    current_user.id, secrets.token_urlsafe(32), target_puzzle_id,
+                    current_user.id, secrets.token_urlsafe(32), None,
                 ))
                 flash("Website clue placement created", "success")
             conn.commit()
@@ -2713,7 +2790,7 @@ def event_clue_placements(event_id):
                c.starts_at, c.ends_at, c.is_active, c.image_data IS NOT NULL,
                p.title
         FROM event_clue_placements c LEFT JOIN event_puzzles p ON p.id=c.target_puzzle_id
-        WHERE c.event_id = %s ORDER BY c.created_at DESC
+        WHERE c.event_id = %s AND c.target_puzzle_id IS NULL ORDER BY c.created_at DESC
     """, (event_id,))
     placements = cur.fetchall()
     cur.execute("""
@@ -2722,16 +2799,9 @@ def event_clue_placements(event_id):
         WHERE t.event_id = %s ORDER BY LOWER(u.username)
     """, (event_id,))
     testers = cur.fetchall()
-    cur.execute("""
-        SELECT p.id, 'Stage ' || s.position || ' · ' || p.title
-        FROM event_puzzles p JOIN event_stages s ON s.id=p.stage_id
-        WHERE s.event_id=%s AND p.puzzle_type='hidden_clue'
-        ORDER BY s.position, p.position
-    """, (event_id,))
-    hidden_puzzles = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template("event_clue_placements.html", event=event, placements=placements, testers=testers, hidden_puzzles=hidden_puzzles)
+    return render_template("event_clue_placements.html", event=event, placements=placements, testers=testers)
 
 
 @app.route("/events/manage/<int:event_id>/placements/<int:placement_id>/edit", methods=["GET", "POST"])
@@ -2752,6 +2822,13 @@ def edit_event_clue_placement(event_id, placement_id):
     if not event or not placement:
         cur.close(); conn.close()
         return render_template("error.html", message="Entrance not found"), 404
+    if placement[14]:
+        cur.execute("SELECT stage_id FROM event_puzzles WHERE id=%s", (placement[14],))
+        target_puzzle = cur.fetchone()
+        cur.close(); conn.close()
+        if target_puzzle:
+            return redirect(url_for("edit_event_puzzle", event_id=event_id, stage_id=target_puzzle[0], puzzle_id=placement[14]))
+        return render_template("error.html", message="Hidden-clue puzzle not found"), 404
     if request.method == "POST":
         try:
             name = request.form.get("name", "").strip()
@@ -2764,27 +2841,20 @@ def edit_event_clue_placement(event_id, placement_id):
                 raise ValueError("Review the required entrance settings")
             if not 0 <= x <= 100 or not 0 <= y <= 100 or not 1 <= width <= 100 or not 1 <= height <= 100:
                 raise ValueError("Placement position or size is outside the page")
-            target_id = int(request.form.get("target_puzzle_id", 0) or 0) or None
-            if target_id:
-                cur.execute("SELECT 1 FROM event_puzzles p JOIN event_stages s ON s.id=p.stage_id WHERE p.id=%s AND s.event_id=%s AND p.puzzle_type='hidden_clue'", (target_id,event_id))
-                if not cur.fetchone():
-                    raise ValueError("Choose a hidden clue puzzle from this event")
             cur.execute("""
                 UPDATE event_clue_placements SET name=%s,page_scope=%s,placement_zone=%s,
                     display_type=%s,label=%s,tooltip=%s,position_x=%s,position_y=%s,
-                    width_percent=%s,height_percent=%s,is_active=%s,target_puzzle_id=%s,
+                    width_percent=%s,height_percent=%s,is_active=%s,
                     updated_at=CURRENT_TIMESTAMP WHERE id=%s AND event_id=%s
             """, (name,page_scope,zone,display_type,request.form.get("label","").strip() or None,
                   request.form.get("tooltip","").strip() or None,x,y,width,height,
-                  request.form.get("is_active")=="on",target_id,placement_id,event_id))
+                  request.form.get("is_active")=="on",placement_id,event_id))
             conn.commit(); flash("Entrance updated", "success")
             return redirect(url_for("event_clue_placements", event_id=event_id))
         except (ValueError, TypeError) as exc:
             conn.rollback(); flash(str(exc), "error")
-    cur.execute("""SELECT p.id,'Stage '||s.position||' · '||p.title FROM event_puzzles p JOIN event_stages s ON s.id=p.stage_id WHERE s.event_id=%s AND p.puzzle_type='hidden_clue' ORDER BY s.position,p.position""", (event_id,))
-    hidden_puzzles = cur.fetchall()
     cur.close(); conn.close()
-    return render_template("event_clue_placement_editor.html", event=event, placement=placement, hidden_puzzles=hidden_puzzles)
+    return render_template("event_clue_placement_editor.html", event=event, placement=placement)
 
 
 @app.route("/event_clue_image/<int:placement_id>")

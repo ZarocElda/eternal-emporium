@@ -1,0 +1,25 @@
+{% macro website_page_preview(prefix, initial_page='store') %}
+<div id="{{ prefix }}-preview" class="site-page-preview" data-page="{{ initial_page }}" style="position:relative; min-height:360px; border:1px solid var(--theme-border); border-radius:12px; background:var(--theme-page-bg); overflow:hidden; cursor:crosshair; box-shadow:0 12px 30px rgba(0,0,0,.25);">
+    <div style="height:42px; padding:0 16px; display:flex; align-items:center; gap:16px; background:var(--theme-header-bg); border-bottom:1px solid var(--theme-border); font-size:11px;">
+        <strong style="font-size:13px; margin-right:auto;">Eternal Emporium</strong><span>Store</span><span>Purchases</span><span>Profile</span><span style="padding:4px 8px; border-radius:10px; background:var(--theme-card-bg);">50 pts</span>
+    </div>
+    <div data-preview-page="store" style="padding:18px;">
+        <div style="height:68px; border-radius:9px; background:linear-gradient(115deg,var(--theme-primary),var(--theme-accent)); display:flex;align-items:center;padding:0 18px;"><div><strong style="font-size:18px;">Store</strong><div style="font-size:11px;opacity:.75;">Browse and purchase rewards</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;">{% for i in range(3) %}<div style="height:150px;padding:10px;border:1px solid var(--theme-border);border-radius:9px;background:var(--theme-card-bg);"><div style="height:78px;border-radius:6px;background:var(--theme-header-bg);"></div><div style="height:8px;width:68%;margin-top:11px;background:var(--theme-border);border-radius:5px;"></div><div style="height:7px;width:40%;margin-top:7px;background:var(--theme-border);border-radius:5px;"></div></div>{% endfor %}</div>
+    </div>
+    <div data-preview-page="dashboard" style="display:none;padding:18px;">
+        <strong style="font-size:18px;">Welcome, Player</strong><div style="font-size:11px;opacity:.65;margin:4px 0 16px;">Your account overview</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">{% for title in ['Account & points','Recent activity','Stats','Quick actions'] %}<div style="height:92px;padding:13px;border:1px solid var(--theme-border);border-radius:9px;background:var(--theme-card-bg);"><strong style="font-size:12px;">{{ title }}</strong><div style="height:8px;width:72%;margin-top:14px;background:var(--theme-border);border-radius:5px;"></div><div style="height:8px;width:45%;margin-top:8px;background:var(--theme-border);border-radius:5px;"></div></div>{% endfor %}</div>
+    </div>
+    <div data-preview-page="profile" style="display:none;padding:18px;">
+        <div style="display:flex;align-items:center;gap:18px;padding:17px;border-radius:10px;background:var(--theme-card-bg);"><div style="width:72px;height:72px;border-radius:50%;background:var(--theme-header-bg);border:3px solid var(--theme-border);"></div><div><strong style="font-size:18px;">Player</strong><div style="font-size:11px;opacity:.65;margin-top:5px;">RuneScape name · Member</div></div></div>
+        <div style="height:118px;margin-top:14px;padding:14px;border:1px solid var(--theme-border);border-radius:9px;background:var(--theme-card-bg);"><strong style="font-size:12px;">Profile settings</strong><div style="height:10px;width:85%;margin-top:18px;background:var(--theme-border);border-radius:5px;"></div><div style="height:10px;width:62%;margin-top:12px;background:var(--theme-border);border-radius:5px;"></div></div>
+    </div>
+    <div data-preview-page="purchases" style="display:none;padding:18px;">
+        <strong style="font-size:18px;">My Purchases</strong><div style="margin-top:16px;border:1px solid var(--theme-border);border-radius:9px;overflow:hidden;">{% for i in range(4) %}<div style="height:42px;display:grid;grid-template-columns:2fr 1fr 1fr;align-items:center;padding:0 12px;background:{{ 'var(--theme-card-bg)' if i%2==0 else 'transparent' }};border-bottom:1px solid var(--theme-border);font-size:10px;"><span>{{ 'Item' if i==0 else 'Reward item' }}</span><span>{{ 'Quantity' if i==0 else '1' }}</span><span>{{ 'Date' if i==0 else 'Recent' }}</span></div>{% endfor %}</div>
+    </div>
+    <div data-preview-page="global" style="display:none;padding:30px 18px;text-align:center;"><strong style="font-size:18px;">Every website page</strong><p style="font-size:12px;opacity:.65;">The clue will use the same floating position across the entire signed-in website.</p><div style="height:145px;border:1px dashed var(--theme-border);border-radius:10px;background:var(--theme-card-bg);"></div></div>
+    <div id="{{ prefix }}-marker" style="position:absolute;left:50%;top:50%;width:12%;height:18%;transform:translate(-50%,-50%);border:2px solid #facc15;background:rgba(250,204,21,.18);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 18px rgba(250,204,21,.55);pointer-events:none;z-index:4;"></div>
+    <div style="position:absolute;left:10px;bottom:8px;padding:5px 8px;border-radius:6px;background:rgba(0,0,0,.7);color:white;font-size:10px;pointer-events:none;">Click the exact hiding place</div>
+</div>
+{% endmacro %}
