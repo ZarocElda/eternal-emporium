@@ -5,6 +5,7 @@ import re
 import requests
 import hashlib
 import math
+import secrets
 from pathlib import Path
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
@@ -2582,9 +2583,9 @@ def event_clue_placements(event_id):
                         event_id, name, page_scope, placement_zone, display_type,
                         label, tooltip, position_x, position_y, width_percent,
                         height_percent, image_filename, image_content_type, image_data,
-                        starts_at, ends_at, is_active, created_by
+                        starts_at, ends_at, is_active, created_by, entry_token
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                              %s, %s, %s, %s, %s, %s, %s, %s)
+                              %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     event_id, name, page_scope, zone, display_type,
                     request.form.get("label", "").strip() or None,
@@ -2594,7 +2595,7 @@ def event_clue_placements(event_id):
                     image.mimetype if image_data else None,
                     psycopg2.Binary(image_data) if image_data else None,
                     starts_at, ends_at, request.form.get("is_active") == "on",
-                    current_user.id,
+                    current_user.id, secrets.token_urlsafe(32),
                 ))
                 flash("Website clue placement created", "success")
             conn.commit()
@@ -2688,24 +2689,36 @@ def event_completions_manager(event_id):
 @app.route("/events")
 @login_required
 def player_events():
+    return redirect(url_for("store"))
+
+
+@app.route("/event-entry/<int:placement_id>/<token>")
+@login_required
+def discover_event(placement_id, token):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT e.id, e.title, e.slug, e.summary, e.starts_at, e.ends_at,
-               ep.started_at, ep.completed_at
-        FROM events e
-        LEFT JOIN event_participations ep
-          ON ep.event_id = e.id AND ep.user_id = %s
-        WHERE e.visibility = 'public'
-          AND e.status IN ('published', 'scheduled')
-          AND (e.starts_at IS NULL OR e.starts_at <= CURRENT_TIMESTAMP)
-          AND (e.ends_at IS NULL OR e.ends_at > CURRENT_TIMESTAMP)
-        ORDER BY e.starts_at NULLS FIRST, e.title
-    """, (current_user.id,))
-    events = cur.fetchall()
+        SELECT e.id, e.slug, e.status, e.starts_at, e.ends_at
+        FROM event_clue_placements c
+        JOIN events e ON e.id = c.event_id
+        WHERE c.id = %s AND c.entry_token = %s AND c.is_active = TRUE
+          AND (c.starts_at IS NULL OR c.starts_at <= CURRENT_TIMESTAMP)
+          AND (c.ends_at IS NULL OR c.ends_at > CURRENT_TIMESTAMP)
+    """, (placement_id, token))
+    entrance = cur.fetchone()
+    if not entrance or (not event_is_open(entrance[2], entrance[3], entrance[4]) and not role_can_manage_events(current_user.role)):
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="This entrance is sealed"), 404
+    cur.execute("""
+        INSERT INTO event_discoveries (event_id, user_id, placement_id)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (event_id, user_id) DO NOTHING
+    """, (entrance[0], current_user.id, placement_id))
+    conn.commit()
     cur.close()
     conn.close()
-    return render_template("player_events.html", events=events)
+    return redirect(url_for("player_event", slug=entrance[1]))
 
 
 @app.route("/events/<slug>")
@@ -2723,6 +2736,19 @@ def player_event(slug):
         cur.close()
         conn.close()
         return render_template("event_unavailable.html", event=event), 403
+    if not manager_preview:
+        cur.execute("""
+            SELECT 1 FROM event_discoveries
+            WHERE event_id = %s AND user_id = %s
+            UNION ALL
+            SELECT 1 FROM event_participations
+            WHERE event_id = %s AND user_id = %s
+            LIMIT 1
+        """, (event[0], current_user.id, event[0], current_user.id))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            return render_template("event_unavailable.html", event=event), 403
 
     participation = get_or_create_participation(cur, event[0], current_user.id)
     puzzles = ordered_event_puzzles(cur, event[0])
@@ -3548,7 +3574,7 @@ def inject_event_clues():
         SELECT c.id, c.name, c.page_scope, c.placement_zone, c.display_type,
                c.label, c.tooltip, c.position_x, c.position_y,
                c.width_percent, c.height_percent, c.image_data IS NOT NULL,
-               e.slug, e.title
+               e.slug, e.title, c.entry_token
         FROM event_clue_placements c
         JOIN events e ON e.id = c.event_id
         WHERE c.is_active = TRUE

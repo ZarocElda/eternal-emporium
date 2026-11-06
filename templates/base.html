@@ -469,11 +469,6 @@
             Purchases
             </a>
 
-            <a href="{{ url_for('player_events') }}"
-            class="{% if request.path == '/events' or (request.path.startswith('/events/') and not request.path.startswith('/events/manage')) %}active-nav{% endif %}">
-            Events
-            </a>
-
             {% if current_user.role in ["admin", "store_manager", "owner"] %}
                 <a href="/admin"
                 class="{% if request.path.startswith('/admin') %}active-nav{% endif %}">
@@ -583,7 +578,7 @@
                 "
             >
             {% for clue in event_clues if clue[3] == 'theme_banner_hotspot' %}
-            <a href="{{ url_for('player_event', slug=clue[12]) }}" title="{{ clue[6] or clue[13] }}" aria-label="{{ clue[6] or 'Hidden event entrance' }}" style="position:absolute; z-index:5; left:{{ clue[7] }}%; top:{{ clue[8] }}%; width:{{ clue[9] }}%; height:{{ clue[10] }}%; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; text-decoration:none; color:var(--theme-text); {% if current_user.role in ['owner','store_manager'] %}outline:1px dashed color-mix(in srgb, var(--theme-accent) 65%, transparent);{% endif %}">
+            <a href="{{ url_for('discover_event', placement_id=clue[0], token=clue[14]) }}" title="{{ clue[6] or clue[13] }}" aria-label="{{ clue[6] or 'Hidden event entrance' }}" style="position:absolute; z-index:5; left:{{ clue[7] }}%; top:{{ clue[8] }}%; width:{{ clue[9] }}%; height:{{ clue[10] }}%; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; text-decoration:none; color:var(--theme-text); {% if current_user.role in ['owner','store_manager'] %}outline:1px dashed color-mix(in srgb, var(--theme-accent) 65%, transparent);{% endif %}">
                 {% if clue[4] == 'image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" alt="{{ clue[5] or 'Hidden clue' }}" style="width:100%; height:100%; object-fit:contain; margin:0;">{% elif clue[4] == 'text' %}<span style="font-size:clamp(18px,4vw,52px); filter:drop-shadow(0 0 7px var(--theme-accent));">{{ clue[5] or '✦' }}</span>{% endif %}
             </a>
             {% endfor %}
@@ -591,7 +586,7 @@
     {% endif %}
 
     {% for clue in event_clues if clue[3] == 'content_top' %}
-    <a href="{{ url_for('player_event', slug=clue[12]) }}" title="{{ clue[6] or clue[13] }}" style="display:flex; align-items:center; justify-content:center; min-height:70px; margin-bottom:18px; border-radius:12px; text-decoration:none; color:var(--theme-text); {% if clue[4] == 'invisible_hotspot' %}{% if current_user.role in ['owner','store_manager'] %}border:1px dashed var(--theme-accent);{% endif %}{% else %}border:1px solid var(--theme-border); background:var(--theme-card-bg);{% endif %}">{% if clue[4] == 'image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" alt="{{ clue[5] or 'Event clue' }}" style="max-width:100%; max-height:220px; object-fit:contain;">{% elif clue[4] == 'text' %}<strong>{{ clue[5] or 'Something is hidden here…' }}</strong>{% endif %}</a>
+    <a href="{{ url_for('discover_event', placement_id=clue[0], token=clue[14]) }}" title="{{ clue[6] or clue[13] }}" style="display:flex; align-items:center; justify-content:center; min-height:70px; margin-bottom:18px; border-radius:12px; text-decoration:none; color:var(--theme-text); {% if clue[4] == 'invisible_hotspot' %}{% if current_user.role in ['owner','store_manager'] %}border:1px dashed var(--theme-accent);{% endif %}{% else %}border:1px solid var(--theme-border); background:var(--theme-card-bg);{% endif %}">{% if clue[4] == 'image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" alt="{{ clue[5] or 'Event clue' }}" style="max-width:100%; max-height:220px; object-fit:contain;">{% elif clue[4] == 'text' %}<strong>{{ clue[5] or 'Something is hidden here…' }}</strong>{% endif %}</a>
     {% endfor %}
 
     <!-- FLASH MESSAGES -->
@@ -612,11 +607,11 @@
 
     {% block content %}{% endblock %}
 
-    {% for clue in event_clues if clue[3] == 'footer' %}<a href="{{ url_for('player_event', slug=clue[12]) }}" title="{{ clue[6] or clue[13] }}" style="display:block; margin:35px auto 0; width:max-content; max-width:100%; color:var(--theme-muted-text); text-decoration:none; {% if clue[4] == 'invisible_hotspot' and current_user.role in ['owner','store_manager'] %}outline:1px dashed var(--theme-accent);{% endif %}">{% if clue[4]=='image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" style="max-width:220px; max-height:100px; object-fit:contain;">{% elif clue[4]=='text' %}{{ clue[5] or '✦' }}{% else %}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{% endif %}</a>{% endfor %}
+    {% for clue in event_clues if clue[3] == 'footer' %}<a href="{{ url_for('discover_event', placement_id=clue[0], token=clue[14]) }}" title="{{ clue[6] or clue[13] }}" style="display:block; margin:35px auto 0; width:max-content; max-width:100%; color:var(--theme-muted-text); text-decoration:none; {% if clue[4] == 'invisible_hotspot' and current_user.role in ['owner','store_manager'] %}outline:1px dashed var(--theme-accent);{% endif %}">{% if clue[4]=='image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" style="max-width:220px; max-height:100px; object-fit:contain;">{% elif clue[4]=='text' %}{{ clue[5] or '✦' }}{% else %}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{% endif %}</a>{% endfor %}
 
 </div>
 
-{% for clue in event_clues if clue[3] == 'floating_corner' %}<a href="{{ url_for('player_event', slug=clue[12]) }}" title="{{ clue[6] or clue[13] }}" style="position:fixed; z-index:1500; left:{{ clue[7] }}%; top:{{ clue[8] }}%; width:{{ clue[9] }}%; min-width:35px; height:{{ clue[10] }}vh; min-height:35px; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; color:var(--theme-text); text-decoration:none; {% if clue[4] == 'invisible_hotspot' and current_user.role in ['owner','store_manager'] %}outline:1px dashed var(--theme-accent);{% endif %}">{% if clue[4]=='image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" style="width:100%; height:100%; object-fit:contain;">{% elif clue[4]=='text' %}<span style="font-size:32px; filter:drop-shadow(0 0 8px var(--theme-accent));">{{ clue[5] or '✦' }}</span>{% endif %}</a>{% endfor %}
+{% for clue in event_clues if clue[3] == 'floating_corner' %}<a href="{{ url_for('discover_event', placement_id=clue[0], token=clue[14]) }}" title="{{ clue[6] or clue[13] }}" style="position:fixed; z-index:1500; left:{{ clue[7] }}%; top:{{ clue[8] }}%; width:{{ clue[9] }}%; min-width:35px; height:{{ clue[10] }}vh; min-height:35px; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; color:var(--theme-text); text-decoration:none; {% if clue[4] == 'invisible_hotspot' and current_user.role in ['owner','store_manager'] %}outline:1px dashed var(--theme-accent);{% endif %}">{% if clue[4]=='image' and clue[11] %}<img src="{{ url_for('event_clue_image', placement_id=clue[0]) }}" style="width:100%; height:100%; object-fit:contain;">{% elif clue[4]=='text' %}<span style="font-size:32px; filter:drop-shadow(0 0 8px var(--theme-accent));">{{ clue[5] or '✦' }}</span>{% endif %}</a>{% endfor %}
 
 <script>
 function goBack() {
