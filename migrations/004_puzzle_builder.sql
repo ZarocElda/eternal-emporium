@@ -1,0 +1,14 @@
+ALTER TABLE event_puzzles
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE TABLE IF NOT EXISTS event_puzzle_assets (
+    id SERIAL PRIMARY KEY,
+    puzzle_id INTEGER NOT NULL REFERENCES event_puzzles(id) ON DELETE CASCADE,
+    asset_kind VARCHAR(30) NOT NULL DEFAULT 'image',
+    filename VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    data BYTEA NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (puzzle_id, asset_kind)
+);

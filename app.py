@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 from flask import Flask, request, redirect, url_for, render_template, flash, Response
 import psycopg2
+from psycopg2.extras import Json
 from dotenv import load_dotenv
 from datetime import timedelta
 from datetime import datetime
@@ -417,6 +418,66 @@ def parse_event_datetime(value):
 def event_slug(value):
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug[:150] or "event"
+
+
+PUZZLE_TYPES = {
+    "code": "Code",
+    "password": "Password",
+    "trivia": "Trivia",
+    "ordering": "Ordering",
+    "image_hotspot": "Image hotspot",
+    "scavenger": "Scavenger hunt",
+    "hidden_clue": "Hidden website clue",
+    "interactive": "Interactive puzzle",
+}
+
+
+def nonempty_lines(value):
+    return [line.strip() for line in (value or "").splitlines() if line.strip()]
+
+
+def build_puzzle_configuration(form):
+    puzzle_type = form.get("puzzle_type", "code")
+    if puzzle_type not in PUZZLE_TYPES:
+        raise ValueError("Choose a valid puzzle type")
+
+    content = {
+        "instructions": form.get("instructions", "").strip(),
+        "options": nonempty_lines(form.get("options", "")),
+        "hidden_location": form.get("hidden_location", "").strip(),
+    }
+    solution = {}
+
+    if puzzle_type == "ordering":
+        correct_order = nonempty_lines(form.get("correct_order", ""))
+        if len(correct_order) < 2:
+            raise ValueError("Ordering puzzles need at least two items")
+        content["options"] = nonempty_lines(form.get("options", "")) or correct_order
+        solution["correct_order"] = correct_order
+    elif puzzle_type == "image_hotspot":
+        try:
+            x = float(form.get("hotspot_x", ""))
+            y = float(form.get("hotspot_y", ""))
+            radius = float(form.get("hotspot_radius", "8") or 8)
+        except ValueError as exc:
+            raise ValueError("Hotspot position and size must be numbers") from exc
+        if not 0 <= x <= 100 or not 0 <= y <= 100 or not 1 <= radius <= 50:
+            raise ValueError("Hotspot values must fit within the image")
+        solution["hotspot"] = {"x": x, "y": y, "radius": radius}
+    else:
+        answers = nonempty_lines(form.get("accepted_answers", ""))
+        if not answers:
+            raise ValueError("Add at least one accepted answer")
+        solution["accepted_answers"] = answers
+
+    hints = [
+        hint for hint in (
+            form.get("hint_1", "").strip(),
+            form.get("hint_2", "").strip(),
+            form.get("hint_3", "").strip(),
+        ) if hint
+    ]
+    return puzzle_type, content, solution, hints
 
 
 def valid_elevated_password(password):
@@ -2044,6 +2105,283 @@ def save_event_form(event_id=None):
 
     flash("Event saved", "success")
     return redirect(url_for("edit_event", event_id=event_id))
+
+
+def get_managed_event(cur, event_id):
+    cur.execute("""
+        SELECT id, title, slug, summary, description, status, visibility,
+               starts_at, ends_at, max_hints
+        FROM events WHERE id = %s
+    """, (event_id,))
+    return cur.fetchone()
+
+
+@app.route("/events/manage/<int:event_id>/builder", methods=["GET", "POST"])
+@login_required
+def event_builder(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        try:
+            if action == "add_stage":
+                title = request.form.get("title", "").strip()
+                if not title:
+                    raise ValueError("Stage title is required")
+                cur.execute(
+                    "SELECT COALESCE(MAX(position), 0) + 1 FROM event_stages WHERE event_id = %s",
+                    (event_id,),
+                )
+                position = cur.fetchone()[0]
+                cur.execute("""
+                    INSERT INTO event_stages (event_id, position, title, description)
+                    VALUES (%s, %s, %s, %s)
+                """, (event_id, position, title, request.form.get("description", "").strip() or None))
+                flash("Stage added", "success")
+            elif action == "update_stage":
+                stage_id = int(request.form.get("stage_id", 0))
+                title = request.form.get("title", "").strip()
+                if not title:
+                    raise ValueError("Stage title is required")
+                cur.execute("""
+                    UPDATE event_stages
+                    SET title = %s, description = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s AND event_id = %s
+                """, (title, request.form.get("description", "").strip() or None, stage_id, event_id))
+                if cur.rowcount != 1:
+                    raise ValueError("Stage not found")
+                flash("Stage updated", "success")
+            else:
+                raise ValueError("Unknown builder action")
+            conn.commit()
+        except (ValueError, TypeError) as exc:
+            conn.rollback()
+            flash(str(exc), "error")
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("event_builder", event_id=event_id))
+
+    cur.execute("""
+        SELECT id, position, title, description
+        FROM event_stages WHERE event_id = %s ORDER BY position
+    """, (event_id,))
+    stages = cur.fetchall()
+    cur.execute("""
+        SELECT p.id, p.stage_id, p.position, p.title, p.puzzle_type,
+               p.prompt, p.is_active, EXISTS(
+                   SELECT 1 FROM event_puzzle_assets a
+                   WHERE a.puzzle_id = p.id AND a.asset_kind = 'image'
+               )
+        FROM event_puzzles p
+        JOIN event_stages s ON s.id = p.stage_id
+        WHERE s.event_id = %s
+        ORDER BY s.position, p.position
+    """, (event_id,))
+    puzzles_by_stage = {}
+    for puzzle in cur.fetchall():
+        puzzles_by_stage.setdefault(puzzle[1], []).append(puzzle)
+    cur.close()
+    conn.close()
+    return render_template(
+        "event_builder.html", event=event, stages=stages,
+        puzzles_by_stage=puzzles_by_stage, puzzle_types=PUZZLE_TYPES,
+    )
+
+
+@app.route("/events/manage/<int:event_id>/stages/<int:stage_id>/puzzles/new", methods=["GET", "POST"])
+@login_required
+def create_event_puzzle(event_id, stage_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    return puzzle_editor_response(event_id, stage_id)
+
+
+@app.route("/events/manage/<int:event_id>/stages/<int:stage_id>/puzzles/<int:puzzle_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_event_puzzle(event_id, stage_id, puzzle_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    return puzzle_editor_response(event_id, stage_id, puzzle_id)
+
+
+def puzzle_editor_response(event_id, stage_id, puzzle_id=None):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    cur.execute("""
+        SELECT id, position, title, description
+        FROM event_stages WHERE id = %s AND event_id = %s
+    """, (stage_id, event_id))
+    stage = cur.fetchone()
+    if not event or not stage:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event stage not found"), 404
+
+    puzzle = None
+    has_image = False
+    if puzzle_id is not None:
+        cur.execute("""
+            SELECT id, position, title, puzzle_type, prompt, content,
+                   solution, hints, is_active
+            FROM event_puzzles WHERE id = %s AND stage_id = %s
+        """, (puzzle_id, stage_id))
+        puzzle = cur.fetchone()
+        if not puzzle:
+            cur.close()
+            conn.close()
+            return render_template("error.html", message="Puzzle not found"), 404
+        cur.execute("SELECT 1 FROM event_puzzle_assets WHERE puzzle_id = %s AND asset_kind = 'image'", (puzzle_id,))
+        has_image = bool(cur.fetchone())
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        prompt = request.form.get("prompt", "").strip()
+        try:
+            if not title:
+                raise ValueError("Puzzle title is required")
+            puzzle_type, content, solution, hints = build_puzzle_configuration(request.form)
+            image = request.files.get("puzzle_image")
+            image_data = None
+            if image and image.filename:
+                extension = os.path.splitext(image.filename)[1].lower()
+                if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+                    raise ValueError("Puzzle image must be JPG, PNG, or WEBP")
+                image_data = image.read(8 * 1024 * 1024 + 1)
+                if len(image_data) > 8 * 1024 * 1024:
+                    raise ValueError("Puzzle image must be 8 MB or smaller")
+            if puzzle_type == "image_hotspot" and image_data is None and not has_image:
+                raise ValueError("Image hotspot puzzles need a puzzle image")
+
+            if puzzle_id is None:
+                cur.execute(
+                    "SELECT COALESCE(MAX(position), 0) + 1 FROM event_puzzles WHERE stage_id = %s",
+                    (stage_id,),
+                )
+                position = cur.fetchone()[0]
+                cur.execute("""
+                    INSERT INTO event_puzzles (
+                        stage_id, position, title, puzzle_type, prompt,
+                        content, solution, hints, is_active
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    stage_id, position, title, puzzle_type, prompt or None,
+                    Json(content), Json(solution), Json(hints),
+                    request.form.get("is_active") == "on",
+                ))
+                puzzle_id = cur.fetchone()[0]
+            else:
+                cur.execute("""
+                    UPDATE event_puzzles SET
+                        title = %s, puzzle_type = %s, prompt = %s,
+                        content = %s, solution = %s, hints = %s,
+                        is_active = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s AND stage_id = %s
+                """, (
+                    title, puzzle_type, prompt or None, Json(content),
+                    Json(solution), Json(hints), request.form.get("is_active") == "on",
+                    puzzle_id, stage_id,
+                ))
+
+            if image_data is not None:
+                cur.execute("""
+                    INSERT INTO event_puzzle_assets (
+                        puzzle_id, asset_kind, filename, content_type, data
+                    ) VALUES (%s, 'image', %s, %s, %s)
+                    ON CONFLICT (puzzle_id, asset_kind) DO UPDATE SET
+                        filename = EXCLUDED.filename,
+                        content_type = EXCLUDED.content_type,
+                        data = EXCLUDED.data,
+                        updated_at = CURRENT_TIMESTAMP
+                """, (
+                    puzzle_id, os.path.basename(image.filename),
+                    image.mimetype or "application/octet-stream",
+                    psycopg2.Binary(image_data),
+                ))
+            conn.commit()
+            flash("Puzzle saved", "success")
+            return redirect(url_for("event_builder", event_id=event_id))
+        except ValueError as exc:
+            conn.rollback()
+            flash(str(exc), "error")
+        finally:
+            cur.close()
+            conn.close()
+
+        return redirect(request.url)
+
+    cur.close()
+    conn.close()
+    return render_template(
+        "puzzle_editor.html", event=event, stage=stage, puzzle=puzzle,
+        puzzle_types=PUZZLE_TYPES, has_image=has_image,
+    )
+
+
+@app.route("/event_puzzle_asset/<int:puzzle_id>")
+@login_required
+def event_puzzle_asset(puzzle_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT data, content_type FROM event_puzzle_assets
+        WHERE puzzle_id = %s AND asset_kind = 'image'
+    """, (puzzle_id,))
+    asset = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not asset:
+        return render_template("error.html", message="Puzzle image not found"), 404
+    return Response(bytes(asset[0]), mimetype=asset[1])
+
+
+@app.route("/events/manage/<int:event_id>/preview")
+@login_required
+def preview_event(event_id):
+    if not role_can_manage_events(current_user.role):
+        return redirect(url_for("store"))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    event = get_managed_event(cur, event_id)
+    if not event:
+        cur.close()
+        conn.close()
+        return render_template("error.html", message="Event not found"), 404
+    cur.execute("""
+        SELECT id, position, title, description
+        FROM event_stages WHERE event_id = %s ORDER BY position
+    """, (event_id,))
+    stages = cur.fetchall()
+    cur.execute("""
+        SELECT p.id, p.stage_id, p.position, p.title, p.puzzle_type,
+               p.prompt, p.content, p.hints, p.is_active,
+               EXISTS(SELECT 1 FROM event_puzzle_assets a WHERE a.puzzle_id = p.id)
+        FROM event_puzzles p
+        JOIN event_stages s ON s.id = p.stage_id
+        WHERE s.event_id = %s ORDER BY s.position, p.position
+    """, (event_id,))
+    puzzles_by_stage = {}
+    for puzzle in cur.fetchall():
+        puzzles_by_stage.setdefault(puzzle[1], []).append(puzzle)
+    cur.close()
+    conn.close()
+    return render_template(
+        "event_preview.html", event=event, stages=stages,
+        puzzles_by_stage=puzzles_by_stage, puzzle_types=PUZZLE_TYPES,
+    )
 
 
 @app.route("/store", methods=["GET", "POST"])

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:24px; flex-wrap:wrap;">
+    <div>
+        <a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← Event Manager</a>
+        <h2 style="margin:12px 0 5px;">{{ event[1] }} — Puzzle Builder</h2>
+        <p style="opacity:.65; margin:0;">Build reusable stages and puzzles. Answers are kept out of the preview.</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <a href="{{ url_for('preview_event', event_id=event[0]) }}" style="padding:10px 14px; border:1px solid var(--theme-border); border-radius:8px; color:var(--theme-text); text-decoration:none;">Preview</a>
+        <a href="{{ url_for('edit_event', event_id=event[0]) }}" style="padding:10px 14px; background:var(--theme-primary); border-radius:8px; color:white; text-decoration:none;">Event settings</a>
+    </div>
+</div>
+
+<div style="display:grid; gap:18px;">
+{% for stage in stages %}
+    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:18px;">
+        <form method="post" style="display:grid; grid-template-columns:90px minmax(180px,1fr) 2fr auto; gap:10px; align-items:end;">
+            <input type="hidden" name="action" value="update_stage">
+            <input type="hidden" name="stage_id" value="{{ stage[0] }}">
+            <div><small style="opacity:.6;">Stage</small><div style="font-size:26px; font-weight:700; padding:10px 0;">{{ stage[1] }}</div></div>
+            <label>Title<input name="title" value="{{ stage[2] }}" required maxlength="200" style="margin-bottom:0;"></label>
+            <label>Description<input name="description" value="{{ stage[3] or '' }}" style="margin-bottom:0;"></label>
+            <button type="submit" style="width:auto; padding:12px 16px;">Save stage</button>
+        </form>
+
+        <div style="display:grid; gap:9px; margin-top:18px;">
+        {% for puzzle in puzzles_by_stage.get(stage[0], []) %}
+            <a href="{{ url_for('edit_event_puzzle', event_id=event[0], stage_id=stage[0], puzzle_id=puzzle[0]) }}" style="display:flex; justify-content:space-between; gap:15px; padding:13px; border:1px solid var(--theme-border); border-radius:9px; color:var(--theme-text); text-decoration:none;">
+                <span><strong>{{ puzzle[2] }}. {{ puzzle[3] }}</strong><br><small style="opacity:.65;">{{ puzzle_types[puzzle[4]] }}{% if puzzle[7] %} · image attached{% endif %}</small></span>
+                <span style="opacity:.7;">{{ 'Active' if puzzle[6] else 'Inactive' }} →</span>
+            </a>
+        {% else %}
+            <div style="padding:16px; border:1px dashed var(--theme-border); border-radius:9px; opacity:.65;">No puzzles in this stage yet.</div>
+        {% endfor %}
+        </div>
+        <a href="{{ url_for('create_event_puzzle', event_id=event[0], stage_id=stage[0]) }}" style="display:inline-block; margin-top:13px; color:var(--theme-primary); text-decoration:none; font-weight:600;">+ Add puzzle</a>
+    </section>
+{% else %}
+    <div style="padding:28px; border:1px dashed var(--theme-border); border-radius:12px; text-align:center;">Add the first stage below.</div>
+{% endfor %}
+</div>
+
+<form method="post" style="max-width:720px; margin-top:22px; background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:18px;">
+    <input type="hidden" name="action" value="add_stage">
+    <h3 style="margin-top:0;">Add stage</h3>
+    <label>Title<input name="title" required maxlength="200" placeholder="Door 1"></label>
+    <label>Description<textarea name="description" rows="3" placeholder="What players encounter in this stage"></textarea></label>
+    <button type="submit" style="width:auto; padding:10px 18px;">Add Stage</button>
+</form>
+{% endblock %}

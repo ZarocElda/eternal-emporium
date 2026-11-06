@@ -6,7 +6,8 @@
 <div style="margin-bottom:22px;">
     <a href="{{ url_for('event_manager') }}" style="color:var(--theme-muted-text); text-decoration:none;">← Event Manager</a>
     <h2 style="margin:12px 0 5px;">{{ 'Edit Event' if event else 'Create Event' }}</h2>
-    <p style="opacity:.65; margin:0;">Phase 2 creates the event foundation. Puzzle building follows in the next phase.</p>
+    <p style="opacity:.65; margin:0;">Configure scheduling, visibility, structure, and completion rewards.</p>
+    {% if event %}<div style="display:flex; gap:10px; margin-top:14px;"><a href="{{ url_for('event_builder', event_id=event[0]) }}" style="background:var(--theme-primary); color:white; padding:9px 13px; border-radius:8px; text-decoration:none;">Open Puzzle Builder</a><a href="{{ url_for('preview_event', event_id=event[0]) }}" style="border:1px solid var(--theme-border); color:var(--theme-text); padding:9px 13px; border-radius:8px; text-decoration:none;">Preview</a></div>{% endif %}
 </div>
 
 <form method="post" style="display:grid; gap:18px; max-width:900px;">

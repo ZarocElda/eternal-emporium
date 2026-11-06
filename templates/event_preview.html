@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; gap:18px; align-items:flex-start; flex-wrap:wrap; margin-bottom:24px;">
+    <div>
+        <a href="{{ url_for('event_builder', event_id=event[0]) }}" style="color:var(--theme-muted-text); text-decoration:none;">← Puzzle Builder</a>
+        <div style="margin-top:14px; font-size:12px; text-transform:uppercase; color:var(--theme-accent); font-weight:700;">Staff preview · answers hidden</div>
+        <h2 style="margin:7px 0;">{{ event[1] }}</h2>
+        <p style="opacity:.75; margin:0; max-width:760px;">{{ event[4] or event[3] or 'No event description yet.' }}</p>
+    </div>
+    <span style="padding:6px 10px; border:1px solid var(--theme-border); border-radius:20px; font-size:12px; text-transform:uppercase;">{{ event[5] }} · {{ event[6] }}</span>
+</div>
+
+<div style="display:grid; gap:22px;">
+{% for stage in stages %}
+<section>
+    <h3 style="margin-bottom:5px;">Stage {{ stage[1] }} · {{ stage[2] }}</h3>
+    {% if stage[3] %}<p style="opacity:.65; margin-top:0;">{{ stage[3] }}</p>{% endif %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px;">
+    {% for puzzle in puzzles_by_stage.get(stage[0], []) %}
+        <article style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:12px; padding:17px; opacity:{{ '1' if puzzle[8] else '.55' }};">
+            <small style="opacity:.6; text-transform:uppercase;">{{ puzzle_types[puzzle[4]] }}{% if not puzzle[8] %} · inactive{% endif %}</small>
+            <h4 style="font-size:18px; margin:8px 0;">{{ puzzle[2] }}. {{ puzzle[3] }}</h4>
+            <p style="white-space:pre-wrap;">{{ puzzle[5] or 'No prompt yet.' }}</p>
+            {% if puzzle[9] %}<img src="{{ url_for('event_puzzle_asset', puzzle_id=puzzle[0]) }}" alt="Puzzle image" style="width:100%; max-height:340px; object-fit:contain; border-radius:8px; background:var(--theme-page-bg);">{% endif %}
+            {% if puzzle[6].get('options') %}<div style="margin-top:12px;"><strong>Player choices</strong><ol>{% for option in puzzle[6].get('options') %}<li>{{ option }}</li>{% endfor %}</ol></div>{% endif %}
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--theme-border);"><small style="opacity:.65;">{{ puzzle[7]|length }} of 3 hints configured · answer intentionally hidden</small></div>
+        </article>
+    {% else %}
+        <div style="padding:16px; border:1px dashed var(--theme-border); border-radius:9px; opacity:.65;">No puzzles yet.</div>
+    {% endfor %}
+    </div>
+</section>
+{% else %}
+<div style="padding:30px; border:1px dashed var(--theme-border); border-radius:12px; text-align:center;">This event has no stages yet.</div>
+{% endfor %}
+</div>
+{% endblock %}
