@@ -11,7 +11,7 @@
     </div>
 
     {% if participation[2] %}
-    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-accent); border-radius:14px; padding:30px; text-align:center;"><div style="font-size:42px;">🏆</div><h3 style="font-size:26px;">Event Complete</h3><p>Your completion and rewards have been recorded. You may revisit your journal and the leaderboard.</p></section>
+    <section style="background:var(--theme-card-bg); border:1px solid var(--theme-accent); border-radius:14px; padding:30px; text-align:center;"><div style="font-size:42px;">🏆</div><h3 style="font-size:26px;">Event Complete</h3><p>{% if manager_preview %}Your test completion was recorded without granting rewards. Reset it whenever you want to test again.{% else %}Your completion and rewards have been recorded. You may revisit your journal and the leaderboard.{% endif %}</p></section>
     {% elif active_puzzle %}
     <section style="background:var(--theme-card-bg); border:1px solid var(--theme-border); border-radius:14px; padding:22px;">
         <small style="text-transform:uppercase; opacity:.6;">Stage {{ active_puzzle[2] }} · {{ active_puzzle[3] }}</small>
